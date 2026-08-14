@@ -174,10 +174,10 @@ int klin_gd32v_wifi_sta_connect(const char *ssid, const char *pass)
     }
     s_last_connect = 0;
     s_connected = 1;
-    /* 192.168.1.50 / .1 / 255.255.255.0 — host-only fake lease */
-    s_ip = 50u | (1u << 8) | (168u << 16) | (192u << 24);
-    s_gw = 1u | (1u << 8) | (168u << 16) | (192u << 24);
-    s_mask = 0u | (255u << 8) | (255u << 16) | (255u << 24);
+    /* 192.168.1.50 / .1 / 255.255.255.0 — same pack as Klin `ipv4` */
+    s_ip = 192u | (168u << 8) | (1u << 16) | (50u << 24);
+    s_gw = 192u | (168u << 8) | (1u << 16) | (1u << 24);
+    s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
     return 0;
 }
 

@@ -11,7 +11,9 @@ fn test_err_ok_is_zero() {
 }
 
 fn test_ipv4_pack() {
-    let got = cast(i32, ipv4(192, 168, 1, 50))
-    let want = cast(i32, 50 | (1 << 8) | (168 << 16) | (192 << 24))
-    testing.assert_eq_i32(got, want)
+    let a: u32 = 192
+    let b: u32 = 168
+    let c: u32 = 1
+    let d: u32 = 50
+    testing.assert(ipv4(192, 168, 1, 50) == (a | (b << 8) | (c << 16) | (d << 24)))
 }

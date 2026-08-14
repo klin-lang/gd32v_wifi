@@ -5,7 +5,6 @@
 module gd32v_wifi
 
 @[link("sta_sdk.c")]
-@[cinclude("sta_sdk.h")]
 @[cimport, codename("klin_gd32v_wifi_sta_init")]
 fn klin_gd32v_wifi_sta_init(): i32
 
