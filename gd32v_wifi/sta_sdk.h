@@ -33,6 +33,24 @@ int klin_gd32v_wifi_sta_disconnect(void);
 int klin_gd32v_wifi_sta_stop(void);
 void klin_gd32v_wifi_sta_log_ip_info(void);
 
+/** Max APs kept after `klin_gd32v_wifi_scan_start` (fixed; documented). */
+int klin_gd32v_wifi_scan_max(void);
+
+/** `wifi_management_scan(blocked=1)` (AN158 §5.1). Needs `sta_init`.
+ * Copies up to `scan_max` APs into a fixed C table (no Klin heap).
+ * timeout_ms unused — the SDK blocks until SCAN_DONE.
+ */
+int klin_gd32v_wifi_scan_start(int timeout_ms);
+
+int klin_gd32v_wifi_scan_count(void);
+int klin_gd32v_wifi_scan_rssi(int index);
+int klin_gd32v_wifi_scan_channel(int index);
+/** `wifi_ap_auth_mode_t` as i32 (0 = OPEN, 3 = WPA2, …). */
+int klin_gd32v_wifi_scan_authmode(int index);
+/** Copy SSID into caller buffer. Returns length excluding NUL, or -1. */
+int klin_gd32v_wifi_scan_ssid(int index, char *out, int max_len);
+void klin_gd32v_wifi_scan_log(void);
+
 #ifdef __cplusplus
 }
 #endif

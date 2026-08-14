@@ -6,6 +6,16 @@ fn main() {
     if e != wifi.err_ok() {
         return
     }
+    e = wifi.scan_start(0)
+    if e != wifi.err_ok() {
+        return
+    }
+    let _max = wifi.scan_max()
+    let mut ssid: [33]u8
+    let _nl = wifi.scan_ssid(0, cast(*mut u8, &ssid[0]), 33)
+    let _r = wifi.scan_rssi(0)
+    let _ch = wifi.scan_channel(0)
+    wifi.scan_log()
     let _sta = wifi.sta_stop()
     e = wifi.ap_init()
     if e != wifi.err_ok() {

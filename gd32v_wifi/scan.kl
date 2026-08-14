@@ -1,0 +1,67 @@
+/// GD32VW553 Wi‑Fi scan — thin Klin surface over `sta_sdk.c` (same unit as STA).
+/// Requires `sta_init` first (STA vif). Results: fixed C table (`scan_max` = 16);
+/// SSID copied into a **caller** buffer via `scan_ssid`. No Klin heap.
+/// SoftAP-only mode cannot scan (needs `sta_init`, not `ap_init`).
+module gd32v_wifi
+
+@[cimport, codename("klin_gd32v_wifi_scan_max")]
+fn klin_gd32v_wifi_scan_max(): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_start")]
+fn klin_gd32v_wifi_scan_start(timeout_ms: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_count")]
+fn klin_gd32v_wifi_scan_count(): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_rssi")]
+fn klin_gd32v_wifi_scan_rssi(index: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_channel")]
+fn klin_gd32v_wifi_scan_channel(index: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_authmode")]
+fn klin_gd32v_wifi_scan_authmode(index: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_ssid")]
+fn klin_gd32v_wifi_scan_ssid(index: i32, out: *mut u8, max_len: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_scan_log")]
+fn klin_gd32v_wifi_scan_log()
+
+/// Max APs kept after `scan_start` (fixed in C).
+pub fn scan_max(): i32 {
+    return klin_gd32v_wifi_scan_max()
+}
+
+/// Blocking `wifi_management_scan` (AN158 §5.1). Needs `sta_init`.
+/// `timeout_ms` unused — the SDK blocks until done (`-1` kept for `esp_wifi` shape).
+pub fn scan_start(timeout_ms: i32): i32 {
+    return klin_gd32v_wifi_scan_start(timeout_ms)
+}
+
+pub fn scan_count(): i32 {
+    return klin_gd32v_wifi_scan_count()
+}
+
+pub fn scan_rssi(index: i32): i32 {
+    return klin_gd32v_wifi_scan_rssi(index)
+}
+
+pub fn scan_channel(index: i32): i32 {
+    return klin_gd32v_wifi_scan_channel(index)
+}
+
+/// `wifi_ap_auth_mode_t` as `i32` (0 = OPEN, 3 = WPA2, …).
+pub fn scan_authmode(index: i32): i32 {
+    return klin_gd32v_wifi_scan_authmode(index)
+}
+
+/// Copy SSID into caller buffer (`max_len` includes space for NUL).
+/// Returns length written (excluding NUL), or `-1`.
+pub fn scan_ssid(index: i32, out: *mut u8, max_len: i32): i32 {
+    return klin_gd32v_wifi_scan_ssid(index, out, max_len)
+}
+
+pub fn scan_log() {
+    klin_gd32v_wifi_scan_log()
+}

@@ -1,0 +1,26 @@
+module gd32v_wifi
+
+import testing
+
+fn test_scan_requires_sta_init() {
+    testing.assert_eq_i32(sta_stop(), 0)
+    testing.assert_eq_i32(scan_start(0), 0 - 1)
+    testing.assert_eq_i32(scan_count(), 0)
+}
+
+fn test_scan_host_stub() {
+    testing.assert_eq_i32(sta_init(), 0)
+    testing.assert_eq_i32(scan_max(), 16)
+    testing.assert_eq_i32(scan_start(0), 0)
+    testing.assert_eq_i32(scan_count(), 1)
+    testing.assert_eq_i32(scan_rssi(0), 0 - 50)
+    testing.assert_eq_i32(scan_channel(0), 6)
+    testing.assert_eq_i32(scan_authmode(0), 3)
+    testing.assert_eq_i32(scan_rssi(1), 0)
+    testing.assert_eq_i32(scan_channel(99), 0)
+    let mut ssid: [33]u8
+    testing.assert_eq_i32(scan_ssid(0, cast(*mut u8, &ssid[0]), 33), 7)
+    testing.assert_eq_i32(scan_ssid(1, cast(*mut u8, &ssid[0]), 33), 0 - 1)
+    testing.assert_eq_i32(sta_stop(), 0)
+    testing.assert_eq_i32(scan_count(), 0)
+}

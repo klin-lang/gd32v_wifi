@@ -1,0 +1,23 @@
+// GD32VW553 Wi‑Fi scan — needs GD32VW55x_WiFi_BLE_SDK on the include/link path.
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.scan_start(15000)
+    if e != wifi.err_ok() {
+        return
+    }
+    wifi.scan_log()
+    let n = wifi.scan_count()
+    let mut i: i32 = 0
+    while i < n {
+        let mut ssid: [33]u8
+        let _nl = wifi.scan_ssid(i, cast(*mut u8, &ssid[0]), 33)
+        let _r = wifi.scan_rssi(i)
+        let _ch = wifi.scan_channel(i)
+        i = i + 1
+    }
+}

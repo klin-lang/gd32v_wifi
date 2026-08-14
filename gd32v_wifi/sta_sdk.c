@@ -19,12 +19,24 @@
 #include "wrapper_os.h"
 #endif
 
+#define KLIN_GD32V_WIFI_SCAN_MAX 16
+#define KLIN_GD32V_WIFI_SSID_MAX 33
+
+typedef struct {
+    char ssid[KLIN_GD32V_WIFI_SSID_MAX];
+    int8_t rssi;
+    uint8_t channel;
+    uint8_t authmode;
+} klin_gd32v_wifi_scan_row_t;
+
 static int s_inited;
 static int s_connected;
 static int s_last_connect;
 static uint32_t s_ip;
 static uint32_t s_gw;
 static uint32_t s_mask;
+static klin_gd32v_wifi_scan_row_t s_scan[KLIN_GD32V_WIFI_SCAN_MAX];
+static int s_scan_count;
 
 #ifdef KLIN_GD32V_WIFI_HAVE_SDK
 
@@ -152,8 +164,98 @@ int klin_gd32v_wifi_sta_stop(void)
     s_ip = 0;
     s_gw = 0;
     s_mask = 0;
+    s_scan_count = 0;
     wifi_management_deinit();
     return 0;
+}
+
+static int klin_gd32v_wifi_freq_to_channel(uint16_t freq)
+{
+    if (freq == 2484) {
+        return 14;
+    }
+    if (freq >= 2412 && freq <= 2472) {
+        return (int)((freq - 2407) / 5);
+    }
+    if (freq >= 1 && freq <= 14) {
+        return (int)freq;
+    }
+    return 0;
+}
+
+static uint8_t klin_gd32v_wifi_akm_to_auth(uint32_t akm)
+{
+    int has_none = (akm & (1u << MAC_AKM_NONE)) != 0;
+    int has_pre = (akm & (1u << MAC_AKM_PRE_RSN)) != 0;
+    int has_psk = (akm & ((1u << MAC_AKM_PSK) | (1u << MAC_AKM_PSK_SHA256) |
+                          (1u << MAC_AKM_FT_PSK))) != 0;
+    int has_sae = (akm & ((1u << MAC_AKM_SAE) | (1u << MAC_AKM_FT_OVER_SAE))) != 0;
+
+    if (has_none && !has_pre && !has_psk && !has_sae) {
+        return (uint8_t)AUTH_MODE_OPEN;
+    }
+    if (has_pre && !has_psk && !has_sae) {
+        return (uint8_t)AUTH_MODE_WEP;
+    }
+    if (has_sae && has_psk) {
+        return (uint8_t)AUTH_MODE_WPA2_WPA3;
+    }
+    if (has_sae) {
+        return (uint8_t)AUTH_MODE_WPA3;
+    }
+    if (has_pre && has_psk) {
+        return (uint8_t)AUTH_MODE_WPA_WPA2;
+    }
+    if (has_psk) {
+        return (uint8_t)AUTH_MODE_WPA2;
+    }
+    if (has_pre) {
+        return (uint8_t)AUTH_MODE_WPA;
+    }
+    return (uint8_t)AUTH_MODE_UNKNOWN;
+}
+
+static void klin_gd32v_wifi_scan_collect(int idx, struct mac_scan_result *result)
+{
+    int n;
+
+    (void)idx;
+    if (s_scan_count >= KLIN_GD32V_WIFI_SCAN_MAX || result == NULL) {
+        return;
+    }
+    memset(&s_scan[s_scan_count], 0, sizeof(s_scan[s_scan_count]));
+    n = (int)result->ssid.length;
+    if (n < 0) {
+        n = 0;
+    }
+    if (n > KLIN_GD32V_WIFI_SSID_MAX - 1) {
+        n = KLIN_GD32V_WIFI_SSID_MAX - 1;
+    }
+    memcpy(s_scan[s_scan_count].ssid, result->ssid.array, (size_t)n);
+    s_scan[s_scan_count].ssid[n] = '\0';
+    s_scan[s_scan_count].rssi = result->rssi;
+    if (result->chan != NULL) {
+        s_scan[s_scan_count].channel =
+            (uint8_t)klin_gd32v_wifi_freq_to_channel(result->chan->freq);
+    }
+    s_scan[s_scan_count].authmode = klin_gd32v_wifi_akm_to_auth(result->akm);
+    s_scan_count = s_scan_count + 1;
+}
+
+int klin_gd32v_wifi_scan_start(int timeout_ms)
+{
+    int e;
+
+    (void)timeout_ms;
+    if (!s_inited) {
+        return -1;
+    }
+    s_scan_count = 0;
+    e = wifi_management_scan(1, NULL);
+    if (e != 0) {
+        return e;
+    }
+    return wifi_netlink_scan_results_print(0, klin_gd32v_wifi_scan_collect);
 }
 
 #else /* host stubs — no SDK headers */
@@ -232,6 +334,23 @@ int klin_gd32v_wifi_sta_stop(void)
     s_ip = 0;
     s_gw = 0;
     s_mask = 0;
+    s_scan_count = 0;
+    return 0;
+}
+
+int klin_gd32v_wifi_scan_start(int timeout_ms)
+{
+    (void)timeout_ms;
+    if (!s_inited) {
+        s_scan_count = 0;
+        return -1;
+    }
+    memset(&s_scan[0], 0, sizeof(s_scan[0]));
+    memcpy(s_scan[0].ssid, "klin-ap", 8);
+    s_scan[0].rssi = (int8_t)-50;
+    s_scan[0].channel = 6;
+    s_scan[0].authmode = 3; /* AUTH_MODE_WPA2 */
+    s_scan_count = 1;
     return 0;
 }
 
@@ -244,4 +363,69 @@ void klin_gd32v_wifi_sta_log_ip_info(void)
     unsigned c = (unsigned)((s_ip >> 16) & 255u);
     unsigned d = (unsigned)((s_ip >> 24) & 255u);
     printf("gd32v_wifi ip %u.%u.%u.%u\n", a, b, c, d);
+}
+
+int klin_gd32v_wifi_scan_max(void)
+{
+    return KLIN_GD32V_WIFI_SCAN_MAX;
+}
+
+int klin_gd32v_wifi_scan_count(void)
+{
+    return s_scan_count;
+}
+
+int klin_gd32v_wifi_scan_rssi(int index)
+{
+    if (index < 0 || index >= s_scan_count) {
+        return 0;
+    }
+    return (int)s_scan[index].rssi;
+}
+
+int klin_gd32v_wifi_scan_channel(int index)
+{
+    if (index < 0 || index >= s_scan_count) {
+        return 0;
+    }
+    return (int)s_scan[index].channel;
+}
+
+int klin_gd32v_wifi_scan_authmode(int index)
+{
+    if (index < 0 || index >= s_scan_count) {
+        return 0;
+    }
+    return (int)s_scan[index].authmode;
+}
+
+int klin_gd32v_wifi_scan_ssid(int index, char *out, int max_len)
+{
+    int n;
+
+    if (out == NULL || max_len <= 0) {
+        return -1;
+    }
+    if (index < 0 || index >= s_scan_count) {
+        out[0] = '\0';
+        return -1;
+    }
+    n = (int)strlen(s_scan[index].ssid);
+    if (n >= max_len) {
+        n = max_len - 1;
+    }
+    memcpy(out, s_scan[index].ssid, (size_t)n);
+    out[n] = '\0';
+    return n;
+}
+
+void klin_gd32v_wifi_scan_log(void)
+{
+    int i;
+
+    for (i = 0; i < s_scan_count; i++) {
+        printf("gd32v_wifi scan: [%d] ch=%u rssi=%d auth=%u ssid=%s\n", i,
+               (unsigned)s_scan[i].channel, (int)s_scan[i].rssi,
+               (unsigned)s_scan[i].authmode, s_scan[i].ssid);
+    }
 }
