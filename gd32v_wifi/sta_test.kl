@@ -10,6 +10,11 @@ fn test_sta_host_stub_lease() {
     testing.assert_eq_i32(sta_wait_ip(0), 0)
     testing.assert(sta_ip_u32() == ipv4(192, 168, 1, 50))
     testing.assert(sta_gateway_u32() == ipv4(192, 168, 1, 1))
+    testing.assert_eq_i32(sta_rssi(), 0 - 42)
+    testing.assert_eq_i32(sta_channel(), 6)
+    testing.assert_eq_i32(sta_authmode(), 3)
+    let mut ssid: [33]u8
+    testing.assert_eq_i32(sta_ap_ssid(cast(*mut u8, &ssid[0]), 33), 6)
     testing.assert_eq_i32(sta_disconnect(), 0)
     testing.assert_eq_i32(sta_connected(), 0)
     testing.assert_eq_i32(sta_stop(), 0)
@@ -18,5 +23,16 @@ fn test_sta_host_stub_lease() {
 fn test_sta_connect_empty_ssid_fails() {
     testing.assert_eq_i32(sta_init(), 0)
     testing.assert_eq_i32(sta_connect("", "x"), 0 - 1)
+    testing.assert_eq_i32(sta_stop(), 0)
+}
+
+fn test_sta_static_ip_and_hostname() {
+    testing.assert_eq_i32(sta_set_hostname("klin-wifi"), 0)
+    testing.assert_eq_i32(sta_set_static_ip(ipv4(10, 0, 0, 20), ipv4(10, 0, 0, 1), ipv4(255, 255, 255, 0)), 0)
+    testing.assert_eq_i32(sta_init(), 0)
+    testing.assert_eq_i32(sta_connect("myssid", "mypass"), 0)
+    testing.assert(sta_ip_u32() == ipv4(10, 0, 0, 20))
+    testing.assert(sta_gateway_u32() == ipv4(10, 0, 0, 1))
+    testing.assert_eq_i32(sta_set_static_ip(0, 0, 0), 0)
     testing.assert_eq_i32(sta_stop(), 0)
 }

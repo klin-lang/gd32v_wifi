@@ -11,6 +11,7 @@ fn test_ap_host_stub_lease() {
     testing.assert(ap_ip_u32() == ipv4(192, 168, 4, 1))
     testing.assert(ap_gateway_u32() == ipv4(192, 168, 4, 1))
     testing.assert(ap_netmask_u32() == ipv4(255, 255, 255, 0))
+    testing.assert_eq_i32(ap_station_num(), 0)
     testing.assert_eq_i32(ap_stop(), 0)
     testing.assert_eq_i32(ap_started(), 0)
 }
@@ -29,4 +30,13 @@ fn test_ap_start_rejects_bad_args() {
     testing.assert_eq_i32(ap_start("klin-ap", "klinpass1", 0), 0 - 1)
     testing.assert_eq_i32(ap_start("klin-ap", "klinpass1", 14), 0 - 1)
     testing.assert_eq_i32(ap_started(), 0)
+}
+
+fn test_ap_set_ip() {
+    testing.assert_eq_i32(ap_set_ip(ipv4(192, 168, 8, 1), ipv4(192, 168, 8, 1), ipv4(255, 255, 255, 0)), 0)
+    testing.assert_eq_i32(ap_init(), 0)
+    testing.assert_eq_i32(ap_start("klin-ap", "klinpass1", 6), 0)
+    testing.assert(ap_ip_u32() == ipv4(192, 168, 8, 1))
+    testing.assert_eq_i32(ap_set_ip(0, 0, 0), 0)
+    testing.assert_eq_i32(ap_stop(), 0)
 }

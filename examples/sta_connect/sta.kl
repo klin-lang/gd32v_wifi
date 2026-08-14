@@ -15,4 +15,6 @@ fn main() {
         return
     }
     wifi.sta_log_ip_info()
+    wifi.sta_log_link()
+    let _r = wifi.sta_rssi()
 }

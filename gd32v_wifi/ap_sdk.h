@@ -10,6 +10,9 @@
 extern "C" {
 #endif
 
+/** Optional AP IPv4 + DHCPS (`wifi_set_vif_ip` / `IP_ADDR_DHCP_SERVER`). 0,0,0 = SDK default. */
+int klin_gd32v_wifi_ap_set_ip(uint32_t ip, uint32_t gw, uint32_t netmask);
+
 /** `wifi_management_init` — same stack as STA. Call once. */
 int klin_gd32v_wifi_ap_init(void);
 
@@ -34,6 +37,9 @@ uint32_t klin_gd32v_wifi_ap_netmask_u32(void);
 
 int klin_gd32v_wifi_ap_stop(void);
 void klin_gd32v_wifi_ap_log_ip_info(void);
+
+/** Associated STA count (`macif_vif_ap_assoc_info_get`). 0 if not started. */
+int klin_gd32v_wifi_ap_station_num(void);
 
 #ifdef __cplusplus
 }

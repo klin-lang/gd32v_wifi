@@ -10,6 +10,12 @@
 extern "C" {
 #endif
 
+/** Optional static IPv4 (`wifi_set_vif_ip` / `IP_ADDR_STATIC_IPV4`). 0,0,0 = DHCP. */
+int klin_gd32v_wifi_sta_set_static_ip(uint32_t ip, uint32_t gw, uint32_t netmask);
+
+/** Optional DHCP hostname (`wifi_vif_hostname_set`). Empty = SDK default. */
+int klin_gd32v_wifi_sta_set_hostname(const char *name);
+
 /** `wifi_management_init` — LwIP + eloop + management task. Call once. */
 int klin_gd32v_wifi_sta_init(void);
 
@@ -32,6 +38,13 @@ uint32_t klin_gd32v_wifi_sta_netmask_u32(void);
 int klin_gd32v_wifi_sta_disconnect(void);
 int klin_gd32v_wifi_sta_stop(void);
 void klin_gd32v_wifi_sta_log_ip_info(void);
+
+/** Associated-AP link (after `sta_connected`). Each call → SDK. */
+int klin_gd32v_wifi_sta_rssi(void);
+int klin_gd32v_wifi_sta_channel(void);
+int klin_gd32v_wifi_sta_authmode(void);
+int klin_gd32v_wifi_sta_ap_ssid(char *out, int max_len);
+void klin_gd32v_wifi_sta_log_link(void);
 
 /** Max APs kept after `klin_gd32v_wifi_scan_start` (fixed; documented). */
 int klin_gd32v_wifi_scan_max(void);

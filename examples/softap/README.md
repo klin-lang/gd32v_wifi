@@ -1,6 +1,6 @@
 # SoftAP on GD32VW553
 
-Hardware demo for [`gd32v_wifi`](../../README.md) `ap_init` / `ap_start`.
+Hardware demo for [`gd32v_wifi`](../../README.md) `ap_init` / `ap_start` / `ap_station_num`.
 
 Needs [GD32VW55x_WiFi_BLE_SDK](https://github.com/GigaDeviceSemiconductor/GD32VW55x_WiFi_BLE_SDK)
 on the include/link path to produce an ELF. Host `make emit` uses C stubs.

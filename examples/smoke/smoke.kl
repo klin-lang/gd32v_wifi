@@ -2,10 +2,25 @@
 import "../../gd32v_wifi" wifi
 
 fn main() {
+    let _h = wifi.sta_set_hostname("klin-wifi")
+    let _s = wifi.sta_set_static_ip(
+        wifi.ipv4(192, 168, 1, 50),
+        wifi.ipv4(192, 168, 1, 1),
+        wifi.ipv4(255, 255, 255, 0)
+    )
     let mut e = wifi.sta_init()
     if e != wifi.err_ok() {
         return
     }
+    e = wifi.sta_connect("myssid", "mypass")
+    if e != wifi.err_ok() {
+        return
+    }
+    let _lr = wifi.sta_rssi()
+    let _lch = wifi.sta_channel()
+    let mut apssid: [33]u8
+    let _aln = wifi.sta_ap_ssid(cast(*mut u8, &apssid[0]), 33)
+    wifi.sta_log_link()
     e = wifi.scan_start(0)
     if e != wifi.err_ok() {
         return
@@ -21,5 +36,11 @@ fn main() {
     if e != wifi.err_ok() {
         return
     }
+    let _ip = wifi.ap_set_ip(
+        wifi.ipv4(192, 168, 4, 1),
+        wifi.ipv4(192, 168, 4, 1),
+        wifi.ipv4(255, 255, 255, 0)
+    )
+    let _n = wifi.ap_station_num()
     let _ap = wifi.ap_stop()
 }

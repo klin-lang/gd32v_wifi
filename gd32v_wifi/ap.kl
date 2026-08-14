@@ -1,10 +1,13 @@
 /// GD32VW553 Wi‑Fi SoftAP — thin Klin surface over `ap_sdk.c`.
 /// Engine = GigaDevice VW55x SDK (`wifi_management_ap_start` / AN158 §5.3).
 /// SoftAP-only on this tag — do not mix with `sta_*` (APSTA later).
-/// Default AP IP = SDK SoftAP (typically 192.168.4.1 + DHCPS).
+/// Default AP IP = SDK SoftAP (typically 192.168.4.1 + DHCPS); `ap_set_ip` optional.
 module gd32v_wifi
 
 @[link("ap_sdk.c")]
+@[cimport, codename("klin_gd32v_wifi_ap_set_ip")]
+fn klin_gd32v_wifi_ap_set_ip(ip: u32, gw: u32, netmask: u32): i32
+
 @[cimport, codename("klin_gd32v_wifi_ap_init")]
 fn klin_gd32v_wifi_ap_init(): i32
 
@@ -34,6 +37,14 @@ fn klin_gd32v_wifi_ap_stop(): i32
 
 @[cimport, codename("klin_gd32v_wifi_ap_log_ip_info")]
 fn klin_gd32v_wifi_ap_log_ip_info()
+
+@[cimport, codename("klin_gd32v_wifi_ap_station_num")]
+fn klin_gd32v_wifi_ap_station_num(): i32
+
+/// Optional AP IPv4 + DHCPS. `0,0,0` = SDK default. Prefer before `ap_start`.
+pub fn ap_set_ip(ip: u32, gw: u32, netmask: u32): i32 {
+    return klin_gd32v_wifi_ap_set_ip(ip, gw, netmask)
+}
 
 /// `wifi_management_init` (once). Same stack as `sta_init`.
 pub fn ap_init(): i32 {
@@ -76,4 +87,8 @@ pub fn ap_stop(): i32 {
 
 pub fn ap_log_ip_info() {
     klin_gd32v_wifi_ap_log_ip_info()
+}
+
+pub fn ap_station_num(): i32 {
+    return klin_gd32v_wifi_ap_station_num()
 }

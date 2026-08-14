@@ -1,10 +1,17 @@
 /// GD32VW553 Wi‑Fi STA — thin Klin surface over `sta_sdk.c`.
 /// Engine = GigaDevice VW55x SDK (`wifi_management` / `wifi_net_ip` / lwIP).
 /// Not part of `machine_gd32v` (MMIO Pin…Adc only). Not `esp_wifi` (ESP-IDF).
-/// Default IP mode = DHCP. SoftAP is `ap_*`. Scan is `scan_*` (needs `sta_init`).
+/// Default IP mode = DHCP; `sta_set_static_ip` is optional. SoftAP is `ap_*`.
+/// Scan is `scan_*` (needs `sta_init`). Link stats after `sta_connected`.
 module gd32v_wifi
 
 @[link("sta_sdk.c")]
+@[cimport, codename("klin_gd32v_wifi_sta_set_static_ip")]
+fn klin_gd32v_wifi_sta_set_static_ip(ip: u32, gw: u32, netmask: u32): i32
+
+@[cimport, codename("klin_gd32v_wifi_sta_set_hostname")]
+fn klin_gd32v_wifi_sta_set_hostname(name: str): i32
+
 @[cimport, codename("klin_gd32v_wifi_sta_init")]
 fn klin_gd32v_wifi_sta_init(): i32
 
@@ -38,6 +45,21 @@ fn klin_gd32v_wifi_sta_stop(): i32
 @[cimport, codename("klin_gd32v_wifi_sta_log_ip_info")]
 fn klin_gd32v_wifi_sta_log_ip_info()
 
+@[cimport, codename("klin_gd32v_wifi_sta_rssi")]
+fn klin_gd32v_wifi_sta_rssi(): i32
+
+@[cimport, codename("klin_gd32v_wifi_sta_channel")]
+fn klin_gd32v_wifi_sta_channel(): i32
+
+@[cimport, codename("klin_gd32v_wifi_sta_authmode")]
+fn klin_gd32v_wifi_sta_authmode(): i32
+
+@[cimport, codename("klin_gd32v_wifi_sta_ap_ssid")]
+fn klin_gd32v_wifi_sta_ap_ssid(out: *mut u8, max_len: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_sta_log_link")]
+fn klin_gd32v_wifi_sta_log_link()
+
 /// SDK / glue success (0).
 pub fn err_ok(): i32 {
     return 0
@@ -46,6 +68,15 @@ pub fn err_ok(): i32 {
 /// Pack `a.b.c.d` into little-endian host `u32` (lwIP on VW553).
 pub fn ipv4(a: u32, b: u32, c: u32, d: u32): u32 {
     return a | (b << 8) | (c << 16) | (d << 24)
+}
+
+/// Optional static IPv4. `0,0,0` = DHCP (default). Prefer before `sta_connect`.
+pub fn sta_set_static_ip(ip: u32, gw: u32, netmask: u32): i32 {
+    return klin_gd32v_wifi_sta_set_static_ip(ip, gw, netmask)
+}
+
+pub fn sta_set_hostname(name: str): i32 {
+    return klin_gd32v_wifi_sta_set_hostname(name)
 }
 
 pub fn sta_init(): i32 {
@@ -90,4 +121,25 @@ pub fn sta_stop(): i32 {
 
 pub fn sta_log_ip_info() {
     klin_gd32v_wifi_sta_log_ip_info()
+}
+
+pub fn sta_rssi(): i32 {
+    return klin_gd32v_wifi_sta_rssi()
+}
+
+pub fn sta_channel(): i32 {
+    return klin_gd32v_wifi_sta_channel()
+}
+
+pub fn sta_authmode(): i32 {
+    return klin_gd32v_wifi_sta_authmode()
+}
+
+/// Associated SSID into caller buffer. Returns length excluding NUL, or `-1`.
+pub fn sta_ap_ssid(out: *mut u8, max_len: i32): i32 {
+    return klin_gd32v_wifi_sta_ap_ssid(out, max_len)
+}
+
+pub fn sta_log_link() {
+    klin_gd32v_wifi_sta_log_link()
 }

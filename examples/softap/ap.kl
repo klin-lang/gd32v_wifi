@@ -19,4 +19,5 @@ fn main() {
         return
     }
     wifi.ap_log_ip_info()
+    let _n = wifi.ap_station_num()
 }

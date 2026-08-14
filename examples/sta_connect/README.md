@@ -1,6 +1,6 @@
 # STA connect on GD32VW553
 
-Hardware demo for [`gd32v_wifi`](../../README.md) `sta_connect`.
+Hardware demo for [`gd32v_wifi`](../../README.md) `sta_connect` / `sta_log_link`.
 
 `make emit` produces C. Linking an ELF needs
 [GD32VW55x_WiFi_BLE_SDK](https://github.com/GigaDeviceSemiconductor/GD32VW55x_WiFi_BLE_SDK)

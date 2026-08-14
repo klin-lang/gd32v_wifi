@@ -17,6 +17,12 @@
 #include "wifi_management.h"
 #include "wifi_net_ip.h"
 #include "wrapper_os.h"
+#if defined(__has_include)
+#if __has_include("macif_vif.h")
+#include "macif_vif.h"
+#define KLIN_GD32V_WIFI_HAVE_MACIF_VIF 1
+#endif
+#endif
 #endif
 
 static int s_inited;
@@ -25,6 +31,10 @@ static int s_last_start;
 static uint32_t s_ip;
 static uint32_t s_gw;
 static uint32_t s_mask;
+static int s_use_custom_ip;
+static uint32_t s_custom_ip;
+static uint32_t s_custom_gw;
+static uint32_t s_custom_mask;
 
 #ifdef KLIN_GD32V_WIFI_HAVE_SDK
 
@@ -38,6 +48,38 @@ static int klin_gd32v_wifi_ap_refresh_ip(void)
     s_ip = cfg.ipv4.addr;
     s_gw = cfg.ipv4.gw;
     s_mask = cfg.ipv4.mask;
+    return 0;
+}
+
+static int klin_gd32v_wifi_ap_apply_ip(void)
+{
+    struct wifi_ip_addr_cfg cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.mode = IP_ADDR_DHCP_SERVER;
+    cfg.default_output = 1;
+    cfg.ipv4.addr = s_custom_ip;
+    cfg.ipv4.gw = s_custom_gw;
+    cfg.ipv4.mask = s_custom_mask;
+    return wifi_set_vif_ip(0, &cfg);
+}
+
+int klin_gd32v_wifi_ap_set_ip(uint32_t ip, uint32_t gw, uint32_t netmask)
+{
+    if (ip == 0 && gw == 0 && netmask == 0) {
+        s_use_custom_ip = 0;
+        s_custom_ip = 0;
+        s_custom_gw = 0;
+        s_custom_mask = 0;
+        return 0;
+    }
+    s_use_custom_ip = 1;
+    s_custom_ip = ip;
+    s_custom_gw = gw;
+    s_custom_mask = netmask;
+    if (s_started) {
+        return klin_gd32v_wifi_ap_apply_ip();
+    }
     return 0;
 }
 
@@ -93,6 +135,9 @@ int klin_gd32v_wifi_ap_start(const char *ssid, const char *pass, int channel)
     s_last_start = wifi_management_ap_start(ssid_buf, pass_arg, (uint32_t)channel, auth, 0);
     s_started = (s_last_start == 0);
     if (s_started) {
+        if (s_use_custom_ip) {
+            (void)klin_gd32v_wifi_ap_apply_ip();
+        }
         (void)klin_gd32v_wifi_ap_refresh_ip();
     }
     return s_last_start;
@@ -156,7 +201,50 @@ int klin_gd32v_wifi_ap_stop(void)
     return wifi_management_ap_stop();
 }
 
+int klin_gd32v_wifi_ap_station_num(void)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_MACIF_VIF
+    uint16_t macs[8 * 3];
+    int n;
+
+    if (!s_started) {
+        return 0;
+    }
+    n = macif_vif_ap_assoc_info_get(0, macs);
+    if (n < 0) {
+        return 0;
+    }
+    return n;
+#else
+    if (!s_started) {
+        return 0;
+    }
+    return 0;
+#endif
+}
+
 #else /* host stubs — no SDK headers */
+
+int klin_gd32v_wifi_ap_set_ip(uint32_t ip, uint32_t gw, uint32_t netmask)
+{
+    if (ip == 0 && gw == 0 && netmask == 0) {
+        s_use_custom_ip = 0;
+        s_custom_ip = 0;
+        s_custom_gw = 0;
+        s_custom_mask = 0;
+        return 0;
+    }
+    s_use_custom_ip = 1;
+    s_custom_ip = ip;
+    s_custom_gw = gw;
+    s_custom_mask = netmask;
+    if (s_started) {
+        s_ip = ip;
+        s_gw = gw;
+        s_mask = netmask;
+    }
+    return 0;
+}
 
 int klin_gd32v_wifi_ap_init(void)
 {
@@ -194,10 +282,16 @@ int klin_gd32v_wifi_ap_start(const char *ssid, const char *pass, int channel)
     }
     s_last_start = 0;
     s_started = 1;
-    /* 192.168.4.1 / .1 / 255.255.255.0 — same pack as Klin `ipv4` */
-    s_ip = 192u | (168u << 8) | (4u << 16) | (1u << 24);
-    s_gw = 192u | (168u << 8) | (4u << 16) | (1u << 24);
-    s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    if (s_use_custom_ip) {
+        s_ip = s_custom_ip;
+        s_gw = s_custom_gw;
+        s_mask = s_custom_mask;
+    } else {
+        /* 192.168.4.1 / .1 / 255.255.255.0 — same pack as Klin `ipv4` */
+        s_ip = 192u | (168u << 8) | (4u << 16) | (1u << 24);
+        s_gw = 192u | (168u << 8) | (4u << 16) | (1u << 24);
+        s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    }
     return 0;
 }
 
@@ -242,6 +336,14 @@ int klin_gd32v_wifi_ap_stop(void)
     s_ip = 0;
     s_gw = 0;
     s_mask = 0;
+    return 0;
+}
+
+int klin_gd32v_wifi_ap_station_num(void)
+{
+    if (!s_started) {
+        return 0;
+    }
     return 0;
 }
 

@@ -17,10 +17,21 @@
 #include "wifi_management.h"
 #include "wifi_net_ip.h"
 #include "wrapper_os.h"
+#if defined(__has_include)
+#if __has_include("macif_vif.h")
+#include "macif_vif.h"
+#define KLIN_GD32V_WIFI_HAVE_MACIF_VIF 1
+#endif
+#if __has_include("wifi_vif.h")
+#include "wifi_vif.h"
+#define KLIN_GD32V_WIFI_HAVE_WIFI_VIF 1
+#endif
+#endif
 #endif
 
 #define KLIN_GD32V_WIFI_SCAN_MAX 16
 #define KLIN_GD32V_WIFI_SSID_MAX 33
+#define KLIN_GD32V_WIFI_HOSTNAME_MAX 32
 
 typedef struct {
     char ssid[KLIN_GD32V_WIFI_SSID_MAX];
@@ -37,6 +48,13 @@ static uint32_t s_gw;
 static uint32_t s_mask;
 static klin_gd32v_wifi_scan_row_t s_scan[KLIN_GD32V_WIFI_SCAN_MAX];
 static int s_scan_count;
+static int s_use_static;
+static uint32_t s_static_ip;
+static uint32_t s_static_gw;
+static uint32_t s_static_mask;
+static char s_hostname[KLIN_GD32V_WIFI_HOSTNAME_MAX];
+static char s_assoc_ssid[KLIN_GD32V_WIFI_SSID_MAX];
+static uint8_t s_assoc_auth;
 
 #ifdef KLIN_GD32V_WIFI_HAVE_SDK
 
@@ -53,6 +71,64 @@ static int klin_gd32v_wifi_refresh_ip(void)
     return 0;
 }
 
+static int klin_gd32v_wifi_apply_static_ip(void)
+{
+    struct wifi_ip_addr_cfg cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.mode = IP_ADDR_STATIC_IPV4;
+    cfg.default_output = 1;
+    cfg.ipv4.addr = s_static_ip;
+    cfg.ipv4.gw = s_static_gw;
+    cfg.ipv4.mask = s_static_mask;
+    return wifi_set_vif_ip(0, &cfg);
+}
+
+static int klin_gd32v_wifi_apply_hostname(void)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_WIFI_VIF
+    if (s_hostname[0] == '\0') {
+        return 0;
+    }
+    return wifi_vif_hostname_set(0, s_hostname);
+#else
+    return 0;
+#endif
+}
+
+int klin_gd32v_wifi_sta_set_static_ip(uint32_t ip, uint32_t gw, uint32_t netmask)
+{
+    if (ip == 0 && gw == 0 && netmask == 0) {
+        s_use_static = 0;
+        s_static_ip = 0;
+        s_static_gw = 0;
+        s_static_mask = 0;
+        return 0;
+    }
+    s_use_static = 1;
+    s_static_ip = ip;
+    s_static_gw = gw;
+    s_static_mask = netmask;
+    if (s_connected) {
+        return klin_gd32v_wifi_apply_static_ip();
+    }
+    return 0;
+}
+
+int klin_gd32v_wifi_sta_set_hostname(const char *name)
+{
+    if (name == NULL || name[0] == '\0') {
+        s_hostname[0] = '\0';
+        return 0;
+    }
+    strncpy(s_hostname, name, sizeof(s_hostname) - 1);
+    s_hostname[sizeof(s_hostname) - 1] = '\0';
+    if (s_inited) {
+        return klin_gd32v_wifi_apply_hostname();
+    }
+    return 0;
+}
+
 int klin_gd32v_wifi_sta_init(void)
 {
     int e;
@@ -65,6 +141,7 @@ int klin_gd32v_wifi_sta_init(void)
         return e;
     }
     s_inited = 1;
+    (void)klin_gd32v_wifi_apply_hostname();
     return 0;
 }
 
@@ -96,6 +173,14 @@ int klin_gd32v_wifi_sta_connect(const char *ssid, const char *pass)
     }
     s_last_connect = wifi_management_connect(ssid_buf, pass_buf, 1);
     s_connected = (s_last_connect == 0);
+    if (s_connected) {
+        memset(s_assoc_ssid, 0, sizeof(s_assoc_ssid));
+        memcpy(s_assoc_ssid, ssid_buf, strlen(ssid_buf));
+        s_assoc_auth = 3;
+        if (s_use_static) {
+            (void)klin_gd32v_wifi_apply_static_ip();
+        }
+    }
     return s_last_connect;
 }
 
@@ -116,6 +201,9 @@ int klin_gd32v_wifi_sta_wait_ip(int timeout_ms)
 
     if (!s_connected) {
         return -1;
+    }
+    if (s_use_static) {
+        (void)klin_gd32v_wifi_apply_static_ip();
     }
     waited = 0;
     while (1) {
@@ -154,6 +242,8 @@ int klin_gd32v_wifi_sta_disconnect(void)
     s_ip = 0;
     s_gw = 0;
     s_mask = 0;
+    s_assoc_ssid[0] = '\0';
+    s_assoc_auth = 0;
     return wifi_management_disconnect();
 }
 
@@ -258,7 +348,129 @@ int klin_gd32v_wifi_scan_start(int timeout_ms)
     return wifi_netlink_scan_results_print(0, klin_gd32v_wifi_scan_collect);
 }
 
+int klin_gd32v_wifi_sta_rssi(void)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_MACIF_VIF
+    if (!s_connected) {
+        return 0;
+    }
+    return (int)macif_vif_sta_rssi_get(0);
+#else
+    if (!s_connected) {
+        return 0;
+    }
+    return 0;
+#endif
+}
+
+int klin_gd32v_wifi_sta_channel(void)
+{
+    if (!s_connected) {
+        return 0;
+    }
+#ifdef KLIN_GD32V_WIFI_HAVE_MACIF_VIF
+    {
+        uint8_t ch = 0;
+        if (macif_vif_current_chan_get(0, &ch) == 0) {
+            return (int)ch;
+        }
+    }
+#endif
+#ifdef KLIN_GD32V_WIFI_HAVE_WIFI_VIF
+    return (int)wifi_vif_tab[0].sta.cfg.channel;
+#else
+    return 0;
+#endif
+}
+
+int klin_gd32v_wifi_sta_authmode(void)
+{
+    if (!s_connected) {
+        return 0;
+    }
+#ifdef KLIN_GD32V_WIFI_HAVE_WIFI_VIF
+    return (int)klin_gd32v_wifi_akm_to_auth(wifi_vif_tab[0].sta.cfg.akm);
+#else
+    return (int)s_assoc_auth;
+#endif
+}
+
+int klin_gd32v_wifi_sta_ap_ssid(char *out, int max_len)
+{
+    int n;
+#ifdef KLIN_GD32V_WIFI_HAVE_WIFI_VIF
+    const char *ssid;
+#endif
+
+    if (out == NULL || max_len <= 0) {
+        return -1;
+    }
+    if (!s_connected) {
+        out[0] = '\0';
+        return -1;
+    }
+#ifdef KLIN_GD32V_WIFI_HAVE_WIFI_VIF
+    ssid = wifi_vif_tab[0].sta.cfg.ssid;
+    n = (int)strlen(ssid);
+#else
+    n = (int)strlen(s_assoc_ssid);
+#endif
+    if (n >= max_len) {
+        n = max_len - 1;
+    }
+#ifdef KLIN_GD32V_WIFI_HAVE_WIFI_VIF
+    memcpy(out, ssid, (size_t)n);
+#else
+    memcpy(out, s_assoc_ssid, (size_t)n);
+#endif
+    out[n] = '\0';
+    return n;
+}
+
+void klin_gd32v_wifi_sta_log_link(void)
+{
+    if (!s_connected) {
+        printf("gd32v_wifi: link (not associated)\n");
+        return;
+    }
+    printf("gd32v_wifi: link rssi=%d ch=%u auth=%u ssid=%s\n",
+           klin_gd32v_wifi_sta_rssi(), (unsigned)klin_gd32v_wifi_sta_channel(),
+           (unsigned)klin_gd32v_wifi_sta_authmode(), s_assoc_ssid);
+}
+
 #else /* host stubs — no SDK headers */
+
+int klin_gd32v_wifi_sta_set_static_ip(uint32_t ip, uint32_t gw, uint32_t netmask)
+{
+    if (ip == 0 && gw == 0 && netmask == 0) {
+        s_use_static = 0;
+        s_static_ip = 0;
+        s_static_gw = 0;
+        s_static_mask = 0;
+        return 0;
+    }
+    s_use_static = 1;
+    s_static_ip = ip;
+    s_static_gw = gw;
+    s_static_mask = netmask;
+    if (s_connected) {
+        s_ip = ip;
+        s_gw = gw;
+        s_mask = netmask;
+    }
+    return 0;
+}
+
+int klin_gd32v_wifi_sta_set_hostname(const char *name)
+{
+    if (name == NULL || name[0] == '\0') {
+        s_hostname[0] = '\0';
+        return 0;
+    }
+    strncpy(s_hostname, name, sizeof(s_hostname) - 1);
+    s_hostname[sizeof(s_hostname) - 1] = '\0';
+    return 0;
+}
 
 int klin_gd32v_wifi_sta_init(void)
 {
@@ -276,10 +488,19 @@ int klin_gd32v_wifi_sta_connect(const char *ssid, const char *pass)
     }
     s_last_connect = 0;
     s_connected = 1;
-    /* 192.168.1.50 / .1 / 255.255.255.0 — same pack as Klin `ipv4` */
-    s_ip = 192u | (168u << 8) | (1u << 16) | (50u << 24);
-    s_gw = 192u | (168u << 8) | (1u << 16) | (1u << 24);
-    s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    memset(s_assoc_ssid, 0, sizeof(s_assoc_ssid));
+    strncpy(s_assoc_ssid, ssid, sizeof(s_assoc_ssid) - 1);
+    s_assoc_auth = 3;
+    if (s_use_static) {
+        s_ip = s_static_ip;
+        s_gw = s_static_gw;
+        s_mask = s_static_mask;
+    } else {
+        /* 192.168.1.50 / .1 / 255.255.255.0 — same pack as Klin `ipv4` */
+        s_ip = 192u | (168u << 8) | (1u << 16) | (50u << 24);
+        s_gw = 192u | (168u << 8) | (1u << 16) | (1u << 24);
+        s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    }
     return 0;
 }
 
@@ -324,6 +545,8 @@ int klin_gd32v_wifi_sta_disconnect(void)
     s_ip = 0;
     s_gw = 0;
     s_mask = 0;
+    s_assoc_ssid[0] = '\0';
+    s_assoc_auth = 0;
     return 0;
 }
 
@@ -336,6 +559,61 @@ int klin_gd32v_wifi_sta_stop(void)
     s_mask = 0;
     s_scan_count = 0;
     return 0;
+}
+
+int klin_gd32v_wifi_sta_rssi(void)
+{
+    if (!s_connected) {
+        return 0;
+    }
+    return 0 - 42;
+}
+
+int klin_gd32v_wifi_sta_channel(void)
+{
+    if (!s_connected) {
+        return 0;
+    }
+    return 6;
+}
+
+int klin_gd32v_wifi_sta_authmode(void)
+{
+    if (!s_connected) {
+        return 0;
+    }
+    return (int)s_assoc_auth;
+}
+
+int klin_gd32v_wifi_sta_ap_ssid(char *out, int max_len)
+{
+    int n;
+
+    if (out == NULL || max_len <= 0) {
+        return -1;
+    }
+    if (!s_connected) {
+        out[0] = '\0';
+        return -1;
+    }
+    n = (int)strlen(s_assoc_ssid);
+    if (n >= max_len) {
+        n = max_len - 1;
+    }
+    memcpy(out, s_assoc_ssid, (size_t)n);
+    out[n] = '\0';
+    return n;
+}
+
+void klin_gd32v_wifi_sta_log_link(void)
+{
+    if (!s_connected) {
+        printf("gd32v_wifi: link (not associated)\n");
+        return;
+    }
+    printf("gd32v_wifi: link rssi=%d ch=%u auth=%u ssid=%s\n",
+           klin_gd32v_wifi_sta_rssi(), (unsigned)klin_gd32v_wifi_sta_channel(),
+           (unsigned)klin_gd32v_wifi_sta_authmode(), s_assoc_ssid);
 }
 
 int klin_gd32v_wifi_scan_start(int timeout_ms)
