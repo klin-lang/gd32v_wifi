@@ -1,0 +1,18 @@
+// GD32VW553 STA — needs GD32VW55x_WiFi_BLE_SDK on the include/link path.
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.sta_connect("myssid", "mypass")
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.sta_wait_ip(20000)
+    if e != wifi.err_ok() {
+        return
+    }
+    wifi.sta_log_ip_info()
+}

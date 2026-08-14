@@ -1,0 +1,10 @@
+// Host-safe smoke: emit-c only (SDK stubs).
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let e = wifi.sta_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    let _ = wifi.sta_stop()
+}

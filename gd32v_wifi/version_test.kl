@@ -1,0 +1,17 @@
+module gd32v_wifi
+
+import testing
+
+fn test_version_is_one() {
+    testing.assert_eq_i32(version(), 1)
+}
+
+fn test_err_ok_is_zero() {
+    testing.assert_eq_i32(err_ok(), 0)
+}
+
+fn test_ipv4_pack() {
+    let got = cast(i32, ipv4(192, 168, 1, 50))
+    let want = cast(i32, 50 | (1 << 8) | (168 << 16) | (192 << 24))
+    testing.assert_eq_i32(got, want)
+}
