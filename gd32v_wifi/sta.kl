@@ -1,7 +1,7 @@
 /// GD32VW553 Wi‑Fi STA — thin Klin surface over `sta_sdk.c`.
 /// Engine = GigaDevice VW55x SDK (`wifi_management` / `wifi_net_ip` / lwIP).
 /// Not part of `machine_gd32v` (MMIO Pin…Adc only). Not `esp_wifi` (ESP-IDF).
-/// Default IP mode = DHCP. SoftAP / scan / BLE later.
+/// Default IP mode = DHCP. SoftAP is `ap_*` in this package. Scan / BLE later.
 module gd32v_wifi
 
 @[link("sta_sdk.c")]

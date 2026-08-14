@@ -1,0 +1,79 @@
+/// GD32VW553 Wi‑Fi SoftAP — thin Klin surface over `ap_sdk.c`.
+/// Engine = GigaDevice VW55x SDK (`wifi_management_ap_start` / AN158 §5.3).
+/// SoftAP-only on this tag — do not mix with `sta_*` (APSTA later).
+/// Default AP IP = SDK SoftAP (typically 192.168.4.1 + DHCPS).
+module gd32v_wifi
+
+@[link("ap_sdk.c")]
+@[cimport, codename("klin_gd32v_wifi_ap_init")]
+fn klin_gd32v_wifi_ap_init(): i32
+
+@[cimport, codename("klin_gd32v_wifi_ap_start")]
+fn klin_gd32v_wifi_ap_start(ssid: str, pass: str, channel: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_ap_wait_started")]
+fn klin_gd32v_wifi_ap_wait_started(timeout_ms: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_ap_started")]
+fn klin_gd32v_wifi_ap_started(): i32
+
+@[cimport, codename("klin_gd32v_wifi_ap_wait_ip")]
+fn klin_gd32v_wifi_ap_wait_ip(timeout_ms: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_ap_ip_u32")]
+fn klin_gd32v_wifi_ap_ip_u32(): u32
+
+@[cimport, codename("klin_gd32v_wifi_ap_gateway_u32")]
+fn klin_gd32v_wifi_ap_gateway_u32(): u32
+
+@[cimport, codename("klin_gd32v_wifi_ap_netmask_u32")]
+fn klin_gd32v_wifi_ap_netmask_u32(): u32
+
+@[cimport, codename("klin_gd32v_wifi_ap_stop")]
+fn klin_gd32v_wifi_ap_stop(): i32
+
+@[cimport, codename("klin_gd32v_wifi_ap_log_ip_info")]
+fn klin_gd32v_wifi_ap_log_ip_info()
+
+/// `wifi_management_init` (once). Same stack as `sta_init`.
+pub fn ap_init(): i32 {
+    return klin_gd32v_wifi_ap_init()
+}
+
+/// Start SoftAP: SSID, password, channel `1`…`13`.
+/// Empty password → open; otherwise WPA2-PSK (password length ≥ 8).
+pub fn ap_start(ssid: str, pass: str, channel: i32): i32 {
+    return klin_gd32v_wifi_ap_start(ssid, pass, channel)
+}
+
+pub fn ap_wait_started(timeout_ms: i32): i32 {
+    return klin_gd32v_wifi_ap_wait_started(timeout_ms)
+}
+
+pub fn ap_started(): i32 {
+    return klin_gd32v_wifi_ap_started()
+}
+
+pub fn ap_wait_ip(timeout_ms: i32): i32 {
+    return klin_gd32v_wifi_ap_wait_ip(timeout_ms)
+}
+
+pub fn ap_ip_u32(): u32 {
+    return klin_gd32v_wifi_ap_ip_u32()
+}
+
+pub fn ap_gateway_u32(): u32 {
+    return klin_gd32v_wifi_ap_gateway_u32()
+}
+
+pub fn ap_netmask_u32(): u32 {
+    return klin_gd32v_wifi_ap_netmask_u32()
+}
+
+pub fn ap_stop(): i32 {
+    return klin_gd32v_wifi_ap_stop()
+}
+
+pub fn ap_log_ip_info() {
+    klin_gd32v_wifi_ap_log_ip_info()
+}

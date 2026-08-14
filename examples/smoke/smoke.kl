@@ -2,9 +2,14 @@
 import "../../gd32v_wifi" wifi
 
 fn main() {
-    let e = wifi.sta_init()
+    let mut e = wifi.sta_init()
     if e != wifi.err_ok() {
         return
     }
-    let _ = wifi.sta_stop()
+    let _sta = wifi.sta_stop()
+    e = wifi.ap_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    let _ap = wifi.ap_stop()
 }

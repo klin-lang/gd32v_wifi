@@ -1,0 +1,22 @@
+// GD32VW553 SoftAP — needs GD32VW55x_WiFi_BLE_SDK on the include/link path.
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.ap_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.ap_start("klin-ap", "klinpass1", 6)
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.ap_wait_started(5000)
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.ap_wait_ip(5000)
+    if e != wifi.err_ok() {
+        return
+    }
+    wifi.ap_log_ip_info()
+}

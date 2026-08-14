@@ -2,8 +2,8 @@ module gd32v_wifi
 
 import testing
 
-fn test_version_is_one() {
-    testing.assert_eq_i32(version(), 1)
+fn test_version_is_two() {
+    testing.assert_eq_i32(version(), 2)
 }
 
 fn test_err_ok_is_zero() {
