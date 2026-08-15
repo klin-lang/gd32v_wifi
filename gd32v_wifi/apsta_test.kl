@@ -1,0 +1,35 @@
+module gd32v_wifi
+
+import testing
+
+fn test_concurrent_needs_init() {
+    testing.assert_eq_i32(sta_stop(), 0)
+    testing.assert_eq_i32(concurrent_set(1), 0 - 1)
+}
+
+fn test_apsta_sta_then_ap() {
+    let mut cs: i32
+    let mut cg: i32
+
+    testing.assert_eq_i32(sta_init(), 0)
+    cs = 0
+    if concurrent_supported() {
+        cs = 1
+    }
+    testing.assert_eq_i32(cs, 1)
+    testing.assert_eq_i32(concurrent_set(1), 0)
+    cg = concurrent()
+    testing.assert_eq_i32(cg, 1)
+    testing.assert_eq_i32(sta_connect("myssid", "mypass"), 0)
+    testing.assert_eq_i32(sta_connected(), 1)
+    testing.assert_eq_i32(ap_init(), 0)
+    testing.assert_eq_i32(ap_start("klin-ap", "klinpass1", 6), 0)
+    testing.assert_eq_i32(ap_started(), 1)
+    testing.assert_eq_i32(ap_wait_ip(0), 0)
+    testing.assert(ap_ip_u32() == ipv4(192, 168, 4, 1))
+    testing.assert(sta_ip_u32() == ipv4(192, 168, 1, 50))
+    testing.assert_eq_i32(ap_stop(), 0)
+    testing.assert_eq_i32(concurrent_set(0), 0)
+    testing.assert_eq_i32(concurrent(), 0)
+    testing.assert_eq_i32(sta_stop(), 0)
+}

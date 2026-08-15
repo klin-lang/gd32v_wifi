@@ -1,6 +1,7 @@
 /* STA bring-up for Klin apps on GD32VW553.
  * Real path: GigaDevice VW55x Wi-Fi BLE SDK (`wifi_management` / `wifi_net_ip`).
  * Host path: stubs when SDK headers are not on the include path (klin test).
+ * `@v0.5.0` APSTA: `concurrent_set` / `concurrent_get` (needs CFG_WIFI_CONCURRENT).
  */
 #include "sta_sdk.h"
 
@@ -18,6 +19,9 @@
 #include "wifi_net_ip.h"
 #include "wrapper_os.h"
 #if defined(__has_include)
+#if __has_include("wlan_config.h")
+#include "wlan_config.h"
+#endif
 #if __has_include("macif_vif.h")
 #include "macif_vif.h"
 #define KLIN_GD32V_WIFI_HAVE_MACIF_VIF 1
@@ -26,6 +30,13 @@
 #include "wifi_vif.h"
 #define KLIN_GD32V_WIFI_HAVE_WIFI_VIF 1
 #endif
+#if __has_include("wifi_netlink.h")
+#include "wifi_netlink.h"
+#define KLIN_GD32V_WIFI_HAVE_NETLINK 1
+#endif
+#endif
+#if defined(CFG_WIFI_CONCURRENT)
+#define KLIN_GD32V_WIFI_HAVE_CONCURRENT 1
 #endif
 #endif
 
@@ -55,6 +66,9 @@ static uint32_t s_static_mask;
 static char s_hostname[KLIN_GD32V_WIFI_HOSTNAME_MAX];
 static char s_assoc_ssid[KLIN_GD32V_WIFI_SSID_MAX];
 static uint8_t s_assoc_auth;
+#ifndef KLIN_GD32V_WIFI_HAVE_SDK
+static int s_concurrent;
+#endif
 
 #ifdef KLIN_GD32V_WIFI_HAVE_SDK
 
@@ -136,6 +150,14 @@ int klin_gd32v_wifi_sta_init(void)
     if (s_inited) {
         return 0;
     }
+#ifdef KLIN_GD32V_WIFI_HAVE_NETLINK
+    /* APSTA: SoftAP path may already have called wifi_management_init. */
+    if (wifi_work_status != WIFI_CLOSED && wifi_work_status != WIFI_CLOSING) {
+        s_inited = 1;
+        (void)klin_gd32v_wifi_apply_hostname();
+        return 0;
+    }
+#endif
     e = wifi_management_init();
     if (e != 0) {
         return e;
@@ -438,7 +460,67 @@ void klin_gd32v_wifi_sta_log_link(void)
            (unsigned)klin_gd32v_wifi_sta_authmode(), s_assoc_ssid);
 }
 
+int klin_gd32v_wifi_concurrent_supported(void)
+{
+#if defined(KLIN_GD32V_WIFI_HAVE_CONCURRENT)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int klin_gd32v_wifi_concurrent_set(int enable)
+{
+#if defined(KLIN_GD32V_WIFI_HAVE_CONCURRENT)
+    int e;
+
+    if (!s_inited) {
+        return -1;
+    }
+    e = wifi_management_concurrent_set(enable ? 1 : 0);
+    if (e != 0) {
+        return e;
+    }
+    if (enable && !wifi_management_concurrent_get()) {
+        return -1;
+    }
+    return 0;
+#else
+    (void)enable;
+    return -1;
+#endif
+}
+
+int klin_gd32v_wifi_concurrent_get(void)
+{
+#if defined(KLIN_GD32V_WIFI_HAVE_CONCURRENT)
+    return wifi_management_concurrent_get() ? 1 : 0;
+#else
+    return 0;
+#endif
+}
+
 #else /* host stubs — no SDK headers */
+
+int klin_gd32v_wifi_concurrent_supported(void)
+{
+    return 1;
+}
+
+int klin_gd32v_wifi_concurrent_set(int enable)
+{
+    if (!s_inited) {
+        return -1;
+    }
+    s_concurrent = enable ? 1 : 0;
+    return 0;
+}
+
+int klin_gd32v_wifi_concurrent_get(void)
+{
+    return s_concurrent ? 1 : 0;
+}
+
 
 int klin_gd32v_wifi_sta_set_static_ip(uint32_t ip, uint32_t gw, uint32_t netmask)
 {

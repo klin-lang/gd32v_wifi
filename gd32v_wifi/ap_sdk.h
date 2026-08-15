@@ -1,6 +1,7 @@
 /* Thin SoftAP helpers for Klin over the GigaDevice VW55x Wi-Fi SDK.
  * Heap / OSAL task / eloop / DHCPS are SDK contracts (not Klin magic).
  * Default AP IPv4 is the SDK SoftAP lease (typically 192.168.4.1).
+ * With concurrent mode (`concurrent_set`), SoftAP uses vif 1 (STA stays vif 0).
  */
 #pragma once
 

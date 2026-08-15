@@ -1,6 +1,7 @@
 /* SoftAP bring-up for Klin apps on GD32VW553.
  * Real path: GigaDevice VW55x Wi-Fi BLE SDK (`wifi_management_ap_start`).
  * Host path: stubs when SDK headers are not on the include path (klin test).
+ * `@v0.5.0` APSTA: SoftAP uses vif 1 when `wifi_management_concurrent_get()`.
  */
 #include "ap_sdk.h"
 
@@ -18,10 +19,20 @@
 #include "wifi_net_ip.h"
 #include "wrapper_os.h"
 #if defined(__has_include)
+#if __has_include("wlan_config.h")
+#include "wlan_config.h"
+#endif
 #if __has_include("macif_vif.h")
 #include "macif_vif.h"
 #define KLIN_GD32V_WIFI_HAVE_MACIF_VIF 1
 #endif
+#if __has_include("wifi_netlink.h")
+#include "wifi_netlink.h"
+#define KLIN_GD32V_WIFI_HAVE_NETLINK 1
+#endif
+#endif
+#if defined(CFG_WIFI_CONCURRENT)
+#define KLIN_GD32V_WIFI_HAVE_CONCURRENT 1
 #endif
 #endif
 
@@ -38,11 +49,22 @@ static uint32_t s_custom_mask;
 
 #ifdef KLIN_GD32V_WIFI_HAVE_SDK
 
+/* SoftAP vif: 0 alone, 1 in concurrent (WIFI_VIF_INDEX_SOFTAP_MODE). */
+static int klin_gd32v_wifi_ap_vif(void)
+{
+#if defined(KLIN_GD32V_WIFI_HAVE_CONCURRENT)
+    if (wifi_management_concurrent_get()) {
+        return 1;
+    }
+#endif
+    return 0;
+}
+
 static int klin_gd32v_wifi_ap_refresh_ip(void)
 {
     struct wifi_ip_addr_cfg cfg;
     memset(&cfg, 0, sizeof(cfg));
-    if (wifi_get_vif_ip(0, &cfg) != 0) {
+    if (wifi_get_vif_ip(klin_gd32v_wifi_ap_vif(), &cfg) != 0) {
         return -1;
     }
     s_ip = cfg.ipv4.addr;
@@ -61,7 +83,7 @@ static int klin_gd32v_wifi_ap_apply_ip(void)
     cfg.ipv4.addr = s_custom_ip;
     cfg.ipv4.gw = s_custom_gw;
     cfg.ipv4.mask = s_custom_mask;
-    return wifi_set_vif_ip(0, &cfg);
+    return wifi_set_vif_ip(klin_gd32v_wifi_ap_vif(), &cfg);
 }
 
 int klin_gd32v_wifi_ap_set_ip(uint32_t ip, uint32_t gw, uint32_t netmask)
@@ -90,6 +112,13 @@ int klin_gd32v_wifi_ap_init(void)
     if (s_inited) {
         return 0;
     }
+#ifdef KLIN_GD32V_WIFI_HAVE_NETLINK
+    /* APSTA: STA path may already have called wifi_management_init. */
+    if (wifi_work_status != WIFI_CLOSED && wifi_work_status != WIFI_CLOSING) {
+        s_inited = 1;
+        return 0;
+    }
+#endif
     e = wifi_management_init();
     if (e != 0) {
         return e;
@@ -210,7 +239,7 @@ int klin_gd32v_wifi_ap_station_num(void)
     if (!s_started) {
         return 0;
     }
-    n = macif_vif_ap_assoc_info_get(0, macs);
+    n = macif_vif_ap_assoc_info_get((uint8_t)klin_gd32v_wifi_ap_vif(), macs);
     if (n < 0) {
         return 0;
     }

@@ -1,7 +1,7 @@
 # gd32v_wifi
 
 Thin **GigaDevice VW55x Wi‑Fi** bindings for [Klin](https://github.com/klin-lang/klin)
-(**STA** + **SoftAP** + **scan** + **link** + **static IP**).
+(**STA** + **SoftAP** + **scan** + **link** + **static IP** + **APSTA**).
 
 The radio is in the **silicon**; this package does **not** belong in
 [`machine_gd32v`](https://github.com/klin-lang/machine_gd32v) (MMIO Pin…Adc).
@@ -19,14 +19,15 @@ allocation.
 
 **STA IP mode:** default = **DHCP (dynamic)**; optional `sta_set_static_ip` /
 `sta_set_hostname`. **SoftAP IP:** SDK default (typically `192.168.4.1` + DHCPS);
-optional `ap_set_ip`. Do **not** mix `sta_*` and `ap_*` on this tag (APSTA later).
+optional `ap_set_ip`. Mix `sta_*` + `ap_*` only after `concurrent_set(1)` (needs `CFG_WIFI_CONCURRENT`).
 Scan needs `sta_init` (SoftAP-only cannot scan). BLE is a later package
 (`gd32v_ble`).
 
-## Status (`@v0.4.0`)
+## Status (`@v0.5.0`)
 
 | API | Notes |
 |---|---|
+| `concurrent_supported` / `concurrent_set` / `concurrent` | APSTA (AN158 §4.4.10). Needs `CFG_WIFI_CONCURRENT` |
 | `sta_init` | `wifi_management_init` (once) |
 | `sta_set_static_ip(ip, gw, mask)` | Optional `wifi_set_vif_ip` / `IP_ADDR_STATIC_IPV4`. `0,0,0` = DHCP. Prefer before `sta_connect` |
 | `sta_set_hostname(name)` | Optional `wifi_vif_hostname_set` (vif 0). Empty = SDK default |
@@ -53,11 +54,34 @@ Scan needs `sta_init` (SoftAP-only cannot scan). BLE is a later package
 | `scan_rssi` / `scan_channel` / `scan_authmode` / `scan_log` | After `scan_start`. Auth = `wifi_ap_auth_mode_t` |
 | `err_ok` / `ipv4` | Same shape as `esp_wifi` |
 
-`version()` → `4`.
+`version()` → `5`.
 
 Host `klin test` uses stubs when `wifi_management.h` is not on the include path
 (`__has_include`). Do **not** call the factory-style init on a host and expect
 RF.
+
+## Usage (APSTA)
+
+```klin
+import "github/klin-lang/gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    e = wifi.concurrent_set(1)
+    e = wifi.sta_connect("myssid", "mypass")
+    e = wifi.sta_wait_ip(20000)
+    e = wifi.ap_init()
+    e = wifi.ap_start("klin-ap", "klinpass1", 6) /* channel follows STA if linked */
+    e = wifi.ap_wait_ip(5000)
+}
+```
+
+```sh
+klin get github/klin-lang/gd32v_wifi@v0.5.0
+```
+
+Without `CFG_WIFI_CONCURRENT`, `concurrent_set` → `-1` / `concurrent_supported` is false.
+SoftAP must share the STA channel when concurrent (SDK may rewrite the channel).
 
 ## Requirements
 
@@ -76,6 +100,7 @@ gd32v_wifi/
 examples/sta_connect/ # needs SDK to link
 examples/softap/      # needs SDK to link
 examples/scan/        # needs SDK to link
+examples/apsta/       # needs SDK + CFG_WIFI_CONCURRENT
 examples/smoke/       # host emit-c
 ```
 
@@ -167,7 +192,7 @@ fn main() {
 ```
 
 ```sh
-klin get github/klin-lang/gd32v_wifi@v0.4.0
+klin get github/klin-lang/gd32v_wifi@v0.5.0
 ```
 
 ## Tests

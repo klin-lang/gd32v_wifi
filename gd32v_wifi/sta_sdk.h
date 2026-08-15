@@ -1,6 +1,7 @@
 /* Thin STA helpers for Klin over the GigaDevice VW55x Wi-Fi SDK.
  * Heap / OSAL task / eloop / lwIP DHCP are SDK contracts (not Klin magic).
  * DHCP (dynamic IP) is the default on this tag.
+ * `@v0.5.0` = … + APSTA concurrent (`concurrent_set` needs CFG_WIFI_CONCURRENT).
  */
 #pragma once
 
@@ -18,6 +19,16 @@ int klin_gd32v_wifi_sta_set_hostname(const char *name);
 
 /** `wifi_management_init` — LwIP + eloop + management task. Call once. */
 int klin_gd32v_wifi_sta_init(void);
+
+/** 1 if SDK built with CFG_WIFI_CONCURRENT (host stub always 1). */
+int klin_gd32v_wifi_concurrent_supported(void);
+/**
+ * Enter/exit Wi‑Fi concurrent mode (AN158 §4.4.10). After `sta_init` or `ap_init`.
+ * Needs CFG_WIFI_CONCURRENT; otherwise -1. SoftAP uses vif 1 while STA stays vif 0.
+ */
+int klin_gd32v_wifi_concurrent_set(int enable);
+/** Current concurrent mode (1/0). */
+int klin_gd32v_wifi_concurrent_get(void);
 
 /** `wifi_management_connect(ssid, pass, blocked=1)` (AN158 §5.2). */
 int klin_gd32v_wifi_sta_connect(const char *ssid, const char *pass);

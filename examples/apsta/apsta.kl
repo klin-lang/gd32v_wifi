@@ -1,0 +1,38 @@
+// GD32VW553 Wi-Fi APSTA via klin-lang/gd32v_wifi @v0.5.0.
+// Needs SDK CFG_WIFI_CONCURRENT (wlan_config.h). SoftAP channel follows STA.
+//   make emit KLIN=/path/to/klin/bin/klin.dart
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.concurrent_set(1)
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.sta_connect("myssid", "mypass")
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.sta_wait_ip(20000)
+    if e != wifi.err_ok() {
+        return
+    }
+    wifi.sta_log_ip_info()
+
+    e = wifi.ap_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.ap_start("klin-ap", "klinpass1", 6)
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.ap_wait_ip(5000)
+    if e != wifi.err_ok() {
+        return
+    }
+    wifi.ap_log_ip_info()
+}

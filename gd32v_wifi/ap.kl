@@ -1,6 +1,6 @@
 /// GD32VW553 Wi‑Fi SoftAP — thin Klin surface over `ap_sdk.c`.
 /// Engine = GigaDevice VW55x SDK (`wifi_management_ap_start` / AN158 §5.3).
-/// SoftAP-only on this tag — do not mix with `sta_*` (APSTA later).
+/// SoftAP-only without concurrent — or SoftAP vif in APSTA after `concurrent_set(1)`.
 /// Default AP IP = SDK SoftAP (typically 192.168.4.1 + DHCPS); `ap_set_ip` optional.
 module gd32v_wifi
 
