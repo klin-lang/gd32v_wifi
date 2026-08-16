@@ -2,6 +2,7 @@
  * Real path: GigaDevice VW55x Wi-Fi BLE SDK (`wifi_management` / `wifi_net_ip`).
  * Host path: stubs when SDK headers are not on the include path (klin test).
  * `@v0.5.0` APSTA: `concurrent_set` / `concurrent_get` (needs CFG_WIFI_CONCURRENT).
+ * `@v0.6.0` roaming: `roaming_set` / `roaming` / `roaming_rssi_th`.
  */
 #include "sta_sdk.h"
 
@@ -68,6 +69,8 @@ static char s_assoc_ssid[KLIN_GD32V_WIFI_SSID_MAX];
 static uint8_t s_assoc_auth;
 #ifndef KLIN_GD32V_WIFI_HAVE_SDK
 static int s_concurrent;
+static int s_roaming;
+static int8_t s_roaming_rssi_th;
 #endif
 
 #ifdef KLIN_GD32V_WIFI_HAVE_SDK
@@ -500,6 +503,43 @@ int klin_gd32v_wifi_concurrent_get(void)
 #endif
 }
 
+int klin_gd32v_wifi_roaming_set(int enable, int rssi_th)
+{
+    int8_t th;
+
+    if (!s_inited) {
+        return -1;
+    }
+    if (rssi_th > 127) {
+        rssi_th = 127;
+    }
+    if (rssi_th < -128) {
+        rssi_th = -128;
+    }
+    th = (int8_t)rssi_th;
+    return wifi_management_roaming_set(enable ? 1 : 0, th);
+}
+
+int klin_gd32v_wifi_roaming_get(void)
+{
+    if (!s_inited) {
+        return 0;
+    }
+    return wifi_management_roaming_get(NULL) ? 1 : 0;
+}
+
+int klin_gd32v_wifi_roaming_rssi_th(void)
+{
+    int8_t th;
+
+    if (!s_inited) {
+        return 0;
+    }
+    th = 0;
+    (void)wifi_management_roaming_get(&th);
+    return (int)th;
+}
+
 #else /* host stubs — no SDK headers */
 
 int klin_gd32v_wifi_concurrent_supported(void)
@@ -519,6 +559,37 @@ int klin_gd32v_wifi_concurrent_set(int enable)
 int klin_gd32v_wifi_concurrent_get(void)
 {
     return s_concurrent ? 1 : 0;
+}
+
+int klin_gd32v_wifi_roaming_set(int enable, int rssi_th)
+{
+    if (!s_inited) {
+        return -1;
+    }
+    if (rssi_th > 127) {
+        rssi_th = 127;
+    }
+    if (rssi_th < -128) {
+        rssi_th = -128;
+    }
+    s_roaming = enable ? 1 : 0;
+    if (enable && rssi_th != 0) {
+        s_roaming_rssi_th = (int8_t)rssi_th;
+    }
+    if (!enable) {
+        /* keep last threshold for get, matching SDK leave-on-disable */
+    }
+    return 0;
+}
+
+int klin_gd32v_wifi_roaming_get(void)
+{
+    return s_roaming ? 1 : 0;
+}
+
+int klin_gd32v_wifi_roaming_rssi_th(void)
+{
+    return (int)s_roaming_rssi_th;
 }
 
 
@@ -640,6 +711,9 @@ int klin_gd32v_wifi_sta_stop(void)
     s_gw = 0;
     s_mask = 0;
     s_scan_count = 0;
+    s_concurrent = 0;
+    s_roaming = 0;
+    s_roaming_rssi_th = 0;
     return 0;
 }
 

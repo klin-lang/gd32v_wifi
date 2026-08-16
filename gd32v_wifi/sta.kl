@@ -4,6 +4,7 @@
 /// Default IP mode = DHCP; `sta_set_static_ip` is optional. SoftAP is `ap_*`.
 /// Scan is `scan_*` (needs `sta_init`). Link stats after `sta_connected`.
 /// APSTA (`@v0.5.0`): `concurrent_set(1)` after init, then mix `sta_*` + `ap_*`.
+/// Roaming (`@v0.6.0`): `roaming_set(enable, rssi_th)` after `sta_init`.
 module gd32v_wifi
 
 @[link("sta_sdk.c")]
@@ -24,6 +25,15 @@ fn klin_gd32v_wifi_concurrent_set(enable: i32): i32
 
 @[cimport, codename("klin_gd32v_wifi_concurrent_get")]
 fn klin_gd32v_wifi_concurrent_get(): i32
+
+@[cimport, codename("klin_gd32v_wifi_roaming_set")]
+fn klin_gd32v_wifi_roaming_set(enable: i32, rssi_th: i32): i32
+
+@[cimport, codename("klin_gd32v_wifi_roaming_get")]
+fn klin_gd32v_wifi_roaming_get(): i32
+
+@[cimport, codename("klin_gd32v_wifi_roaming_rssi_th")]
+fn klin_gd32v_wifi_roaming_rssi_th(): i32
 
 @[cimport, codename("klin_gd32v_wifi_sta_connect")]
 fn klin_gd32v_wifi_sta_connect(ssid: str, pass: str): i32
@@ -105,6 +115,19 @@ pub fn concurrent_set(enable: i32): i32 {
 
 pub fn concurrent(): i32 {
     return klin_gd32v_wifi_concurrent_get()
+}
+
+/// Enable/disable STA roaming. `rssi_th` e.g. `-70`; `0` keeps prior threshold when enabling.
+pub fn roaming_set(enable: i32, rssi_th: i32): i32 {
+    return klin_gd32v_wifi_roaming_set(enable, rssi_th)
+}
+
+pub fn roaming(): i32 {
+    return klin_gd32v_wifi_roaming_get()
+}
+
+pub fn roaming_rssi_th(): i32 {
+    return klin_gd32v_wifi_roaming_rssi_th()
 }
 
 pub fn sta_connect(ssid: str, pass: str): i32 {

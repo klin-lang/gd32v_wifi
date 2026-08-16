@@ -1,13 +1,13 @@
 # gd32v_wifi
 
 Thin **GigaDevice VW55x Wi‑Fi** bindings for [Klin](https://github.com/klin-lang/klin)
-(**STA** + **SoftAP** + **scan** + **link** + **static IP** + **APSTA**).
+(**STA** + **SoftAP** + **scan** + **link** + **static IP** + **APSTA** + **roaming**).
 
 The radio is in the **silicon**; this package does **not** belong in
 [`machine_gd32v`](https://github.com/klin-lang/machine_gd32v) (MMIO Pin…Adc).
 Same split as MicroPython `machine` vs `network` — see Klin
 [061](https://github.com/klin-lang/klin/blob/main/issues/061-micropython-machine-api.md)
-and [126](https://github.com/klin-lang/klin/blob/main/issues/126-gd32v-wifi-sdk.md).
+and [126](https://github.com/klin-lang/klin/blob/main/issues/137-gd32v-wifi-sdk.md).
 
 C engine = **[GD32VW55x_WiFi_BLE_SDK](https://github.com/GigaDeviceSemiconductor/GD32VW55x_WiFi_BLE_SDK)**
 (`wifi_management`, `wifi_net_ip`, lwIP, OSAL). Klin is a thin FFI client
@@ -23,10 +23,11 @@ optional `ap_set_ip`. Mix `sta_*` + `ap_*` only after `concurrent_set(1)` (needs
 Scan needs `sta_init` (SoftAP-only cannot scan). BLE is a later package
 (`gd32v_ble`).
 
-## Status (`@v0.5.0`)
+## Status (`@v0.6.0`)
 
 | API | Notes |
 |---|---|
+| `roaming_set` / `roaming` / `roaming_rssi_th` | STA roaming (`wifi_management_roaming_set`) |
 | `concurrent_supported` / `concurrent_set` / `concurrent` | APSTA (AN158 §4.4.10). Needs `CFG_WIFI_CONCURRENT` |
 | `sta_init` | `wifi_management_init` (once) |
 | `sta_set_static_ip(ip, gw, mask)` | Optional `wifi_set_vif_ip` / `IP_ADDR_STATIC_IPV4`. `0,0,0` = DHCP. Prefer before `sta_connect` |
@@ -54,11 +55,29 @@ Scan needs `sta_init` (SoftAP-only cannot scan). BLE is a later package
 | `scan_rssi` / `scan_channel` / `scan_authmode` / `scan_log` | After `scan_start`. Auth = `wifi_ap_auth_mode_t` |
 | `err_ok` / `ipv4` | Same shape as `esp_wifi` |
 
-`version()` → `5`.
+`version()` → `6`.
 
 Host `klin test` uses stubs when `wifi_management.h` is not on the include path
 (`__has_include`). Do **not** call the factory-style init on a host and expect
 RF.
+
+
+## Usage (roaming)
+
+```klin
+import "github/klin-lang/gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    e = wifi.roaming_set(1, 0 - 70)
+    e = wifi.sta_connect("myssid", "mypass")
+    e = wifi.sta_wait_ip(20000)
+}
+```
+
+```sh
+klin get github/klin-lang/gd32v_wifi@v0.6.0
+```
 
 ## Usage (APSTA)
 
@@ -77,7 +96,7 @@ fn main() {
 ```
 
 ```sh
-klin get github/klin-lang/gd32v_wifi@v0.5.0
+klin get github/klin-lang/gd32v_wifi@v0.6.0
 ```
 
 Without `CFG_WIFI_CONCURRENT`, `concurrent_set` → `-1` / `concurrent_supported` is false.
@@ -192,7 +211,7 @@ fn main() {
 ```
 
 ```sh
-klin get github/klin-lang/gd32v_wifi@v0.5.0
+klin get github/klin-lang/gd32v_wifi@v0.6.0
 ```
 
 ## Tests

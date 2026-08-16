@@ -1,0 +1,29 @@
+// GD32VW553 Wi-Fi STA roaming via klin-lang/gd32v_wifi @v0.6.0.
+// roaming_set after sta_init; RSSI threshold triggers SDK preroam.
+//   make emit KLIN=/path/to/klin/bin/klin.dart
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    if e != wifi.err_ok() {
+        return
+    }
+
+    e = wifi.roaming_set(1, 0 - 70)
+    if e != wifi.err_ok() {
+        return
+    }
+
+    e = wifi.sta_connect("myssid", "mypass")
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.sta_wait_ip(20000)
+    if e != wifi.err_ok() {
+        return
+    }
+
+    let _r = wifi.roaming()
+    let _th = wifi.roaming_rssi_th()
+    wifi.sta_log_link()
+}

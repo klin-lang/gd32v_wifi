@@ -1,0 +1,33 @@
+module gd32v_wifi
+
+import testing
+
+fn test_roaming_needs_init() {
+    testing.assert_eq_i32(sta_stop(), 0)
+    testing.assert_eq_i32(roaming_set(1, 0 - 70), 0 - 1)
+}
+
+fn test_roaming_set_get() {
+    let mut r: i32
+
+    testing.assert_eq_i32(sta_init(), 0)
+    testing.assert_eq_i32(roaming(), 0)
+    testing.assert_eq_i32(roaming_set(1, 0 - 70), 0)
+    r = roaming()
+    testing.assert_eq_i32(r, 1)
+    testing.assert_eq_i32(roaming_rssi_th(), 0 - 70)
+    testing.assert_eq_i32(roaming_set(0, 0), 0)
+    testing.assert_eq_i32(roaming(), 0)
+    testing.assert_eq_i32(roaming_rssi_th(), 0 - 70)
+    testing.assert_eq_i32(sta_stop(), 0)
+}
+
+fn test_roaming_enable_keeps_th_on_zero() {
+    testing.assert_eq_i32(sta_init(), 0)
+    testing.assert_eq_i32(roaming_set(1, 0 - 75), 0)
+    testing.assert_eq_i32(roaming_rssi_th(), 0 - 75)
+    testing.assert_eq_i32(roaming_set(1, 0), 0)
+    testing.assert_eq_i32(roaming(), 1)
+    testing.assert_eq_i32(roaming_rssi_th(), 0 - 75)
+    testing.assert_eq_i32(sta_stop(), 0)
+}

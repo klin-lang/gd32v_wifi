@@ -2,6 +2,7 @@
  * Heap / OSAL task / eloop / lwIP DHCP are SDK contracts (not Klin magic).
  * DHCP (dynamic IP) is the default on this tag.
  * `@v0.5.0` = … + APSTA concurrent (`concurrent_set` needs CFG_WIFI_CONCURRENT).
+ * `@v0.6.0` = … + STA roaming (`roaming_set` / `roaming` / `roaming_rssi_th`).
  */
 #pragma once
 
@@ -29,6 +30,16 @@ int klin_gd32v_wifi_concurrent_supported(void);
 int klin_gd32v_wifi_concurrent_set(int enable);
 /** Current concurrent mode (1/0). */
 int klin_gd32v_wifi_concurrent_get(void);
+
+/**
+ * Enable/disable STA roaming (`wifi_management_roaming_set`). After `sta_init`.
+ * `rssi_th` is int8 dBm (e.g. -70). When enabling, `0` keeps the prior threshold.
+ */
+int klin_gd32v_wifi_roaming_set(int enable, int rssi_th);
+/** Current roaming enable (1/0). */
+int klin_gd32v_wifi_roaming_get(void);
+/** Current roaming RSSI threshold (int8 as i32), or 0 if unset. */
+int klin_gd32v_wifi_roaming_rssi_th(void);
 
 /** `wifi_management_connect(ssid, pass, blocked=1)` (AN158 §5.2). */
 int klin_gd32v_wifi_sta_connect(const char *ssid, const char *pass);
