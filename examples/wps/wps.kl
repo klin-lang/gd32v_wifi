@@ -1,5 +1,5 @@
 // GD32VW553 Wi-Fi WPS via klin-lang/gd32v_wifi @v0.7.0.
-// Needs SDK CFG_WPS. Push-button or PIN after sta_init.
+// Needs SDK msdk_ffd + CFG_WPS. Push-button or PIN after sta_init.
 //   make emit KLIN=/path/to/klin/bin/klin.dart
 import "../../gd32v_wifi" wifi
 

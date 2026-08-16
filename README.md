@@ -68,6 +68,9 @@ Without `CFG_WPS` / `CFG_8021x_EAP_TLS`, the matching calls return `-1` /
 `supported` is false. PEM cert/key strings for EAP-TLS are **caller-owned**
 (no Klin heap).
 
+**Board note:** WPS / EAP-TLS need an **msdk_ffd** SDK image (full
+`libwpa_supplicant`, AN154). Default **msdk** (`libwpas`) does not provide them.
+
 
 ## Usage (WPS)
 
