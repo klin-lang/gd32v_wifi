@@ -1,0 +1,50 @@
+module gd32v_wifi
+
+import testing
+
+fn test_wps_needs_init() {
+    testing.assert_eq_i32(sta_stop(), 0)
+    testing.assert_eq_i32(wps_pbc(), 0 - 1)
+    testing.assert_eq_i32(wps_pin("12345670"), 0 - 1)
+}
+
+fn test_wps_pbc_and_pin() {
+    let mut s: i32
+
+    testing.assert_eq_i32(sta_init(), 0)
+    s = 0
+    if wps_supported() {
+        s = 1
+    }
+    testing.assert_eq_i32(s, 1)
+    testing.assert_eq_i32(wps_pbc(), 0)
+    testing.assert_eq_i32(sta_connected(), 1)
+    testing.assert_eq_i32(sta_disconnect(), 0)
+    testing.assert_eq_i32(wps_pin(""), 0 - 1)
+    testing.assert_eq_i32(wps_pin("123"), 0 - 1)
+    testing.assert_eq_i32(wps_pin("123456789"), 0 - 1)
+    testing.assert_eq_i32(wps_pin("12345670"), 0)
+    testing.assert_eq_i32(sta_connected(), 1)
+    testing.assert_eq_i32(sta_stop(), 0)
+}
+
+fn test_eap_tls_needs_init() {
+    testing.assert_eq_i32(sta_stop(), 0)
+    testing.assert_eq_i32(sta_connect_eap_tls("corp", "user", "CA", "KEY", "CERT", "", ""), 0 - 1)
+}
+
+fn test_eap_tls_connect() {
+    let mut s: i32
+
+    testing.assert_eq_i32(sta_init(), 0)
+    s = 0
+    if eap_tls_supported() {
+        s = 1
+    }
+    testing.assert_eq_i32(s, 1)
+    testing.assert_eq_i32(sta_connect_eap_tls("corp", "user", "", "KEY", "CERT", "", ""), 0 - 1)
+    testing.assert_eq_i32(sta_connect_eap_tls("corp", "user", "CA", "KEY", "CERT", "", ""), 0)
+    testing.assert_eq_i32(sta_connected(), 1)
+    testing.assert_eq_i32(sta_wait_ip(1000), 0)
+    testing.assert_eq_i32(sta_stop(), 0)
+}

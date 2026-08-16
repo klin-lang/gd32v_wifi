@@ -3,6 +3,7 @@
  * DHCP (dynamic IP) is the default on this tag.
  * `@v0.5.0` = … + APSTA concurrent (`concurrent_set` needs CFG_WIFI_CONCURRENT).
  * `@v0.6.0` = … + STA roaming (`roaming_set` / `roaming` / `roaming_rssi_th`).
+ * `@v0.7.0` = … + WPS (`wps_*`) + EAP-TLS (`sta_connect_eap_tls`).
  */
 #pragma once
 
@@ -40,6 +41,31 @@ int klin_gd32v_wifi_roaming_set(int enable, int rssi_th);
 int klin_gd32v_wifi_roaming_get(void);
 /** Current roaming RSSI threshold (int8 as i32), or 0 if unset. */
 int klin_gd32v_wifi_roaming_rssi_th(void);
+
+/** 1 if SDK built with CFG_WPS (host stub always 1). */
+int klin_gd32v_wifi_wps_supported(void);
+/**
+ * WPS push-button (`wifi_management_wps_start(true, NULL, blocked=1)`). After `sta_init`.
+ * Needs CFG_WPS; otherwise -1.
+ */
+int klin_gd32v_wifi_wps_pbc(void);
+/**
+ * WPS PIN mode (`wifi_management_wps_start(false, pin, blocked=1)`). `pin` 4..=8 digits.
+ * Needs CFG_WPS; otherwise -1.
+ */
+int klin_gd32v_wifi_wps_pin(const char *pin);
+
+/** 1 if SDK built with CFG_8021x_EAP_TLS (host stub always 1). */
+int klin_gd32v_wifi_eap_tls_supported(void);
+/**
+ * Enterprise STA connect (`wifi_management_connect_with_eap_tls`, blocked=1).
+ * `ca_cert` / `client_key` / `client_cert` are PEM C strings (caller-owned).
+ * Empty `client_key_password` / `phase1` → NULL. Needs CFG_8021x_EAP_TLS; otherwise -1.
+ */
+int klin_gd32v_wifi_sta_connect_eap_tls(const char *ssid, const char *identity,
+                                        const char *ca_cert, const char *client_key,
+                                        const char *client_cert,
+                                        const char *client_key_password, const char *phase1);
 
 /** `wifi_management_connect(ssid, pass, blocked=1)` (AN158 §5.2). */
 int klin_gd32v_wifi_sta_connect(const char *ssid, const char *pass);

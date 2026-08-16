@@ -5,6 +5,7 @@
 /// Scan is `scan_*` (needs `sta_init`). Link stats after `sta_connected`.
 /// APSTA (`@v0.5.0`): `concurrent_set(1)` after init, then mix `sta_*` + `ap_*`.
 /// Roaming (`@v0.6.0`): `roaming_set(enable, rssi_th)` after `sta_init`.
+/// WPS + EAP-TLS (`@v0.7.0`): `wps_*` / `sta_connect_eap_tls` (needs CFG_WPS / CFG_8021x_EAP_TLS).
 module gd32v_wifi
 
 @[link("sta_sdk.c")]
@@ -34,6 +35,21 @@ fn klin_gd32v_wifi_roaming_get(): i32
 
 @[cimport, codename("klin_gd32v_wifi_roaming_rssi_th")]
 fn klin_gd32v_wifi_roaming_rssi_th(): i32
+
+@[cimport, codename("klin_gd32v_wifi_wps_supported")]
+fn klin_gd32v_wifi_wps_supported(): i32
+
+@[cimport, codename("klin_gd32v_wifi_wps_pbc")]
+fn klin_gd32v_wifi_wps_pbc(): i32
+
+@[cimport, codename("klin_gd32v_wifi_wps_pin")]
+fn klin_gd32v_wifi_wps_pin(pin: str): i32
+
+@[cimport, codename("klin_gd32v_wifi_eap_tls_supported")]
+fn klin_gd32v_wifi_eap_tls_supported(): i32
+
+@[cimport, codename("klin_gd32v_wifi_sta_connect_eap_tls")]
+fn klin_gd32v_wifi_sta_connect_eap_tls(ssid: str, identity: str, ca_cert: str, client_key: str, client_cert: str, client_key_password: str, phase1: str): i32
 
 @[cimport, codename("klin_gd32v_wifi_sta_connect")]
 fn klin_gd32v_wifi_sta_connect(ssid: str, pass: str): i32
@@ -128,6 +144,31 @@ pub fn roaming(): i32 {
 
 pub fn roaming_rssi_th(): i32 {
     return klin_gd32v_wifi_roaming_rssi_th()
+}
+
+/// 1 if SDK built with CFG_WPS (host stub always 1).
+pub fn wps_supported(): bool {
+    return klin_gd32v_wifi_wps_supported() != 0
+}
+
+/// WPS push-button (blocked). After `sta_init`. Needs CFG_WPS.
+pub fn wps_pbc(): i32 {
+    return klin_gd32v_wifi_wps_pbc()
+}
+
+/// WPS PIN (4..=8 digits, blocked). After `sta_init`. Needs CFG_WPS.
+pub fn wps_pin(pin: str): i32 {
+    return klin_gd32v_wifi_wps_pin(pin)
+}
+
+/// 1 if SDK built with CFG_8021x_EAP_TLS (host stub always 1).
+pub fn eap_tls_supported(): bool {
+    return klin_gd32v_wifi_eap_tls_supported() != 0
+}
+
+/// Enterprise EAP-TLS connect (blocked). PEM strings are caller-owned. Empty key password / phase1 OK.
+pub fn sta_connect_eap_tls(ssid: str, identity: str, ca_cert: str, client_key: str, client_cert: str, client_key_password: str, phase1: str): i32 {
+    return klin_gd32v_wifi_sta_connect_eap_tls(ssid, identity, ca_cert, client_key, client_cert, client_key_password, phase1)
 }
 
 pub fn sta_connect(ssid: str, pass: str): i32 {

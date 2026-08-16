@@ -1,0 +1,25 @@
+// GD32VW553 Wi-Fi WPS via klin-lang/gd32v_wifi @v0.7.0.
+// Needs SDK CFG_WPS. Push-button or PIN after sta_init.
+//   make emit KLIN=/path/to/klin/bin/klin.dart
+import "../../gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    if e != wifi.err_ok() {
+        return
+    }
+    if !wifi.wps_supported() {
+        return
+    }
+    // PBC: press AP WPS button around the same time.
+    e = wifi.wps_pbc()
+    // Or PIN: e = wifi.wps_pin("12345670")
+    if e != wifi.err_ok() {
+        return
+    }
+    e = wifi.sta_wait_ip(30000)
+    if e != wifi.err_ok() {
+        return
+    }
+    wifi.sta_log_ip_info()
+}

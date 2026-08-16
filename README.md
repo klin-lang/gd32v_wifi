@@ -1,7 +1,8 @@
 # gd32v_wifi
 
 Thin **GigaDevice VW55x Wi‑Fi** bindings for [Klin](https://github.com/klin-lang/klin)
-(**STA** + **SoftAP** + **scan** + **link** + **static IP** + **APSTA** + **roaming**).
+(**STA** + **SoftAP** + **scan** + **link** + **static IP** + **APSTA** + **roaming** +
+**WPS** + **EAP-TLS**).
 
 The radio is in the **silicon**; this package does **not** belong in
 [`machine_gd32v`](https://github.com/klin-lang/machine_gd32v) (MMIO Pin…Adc).
@@ -23,10 +24,12 @@ optional `ap_set_ip`. Mix `sta_*` + `ap_*` only after `concurrent_set(1)` (needs
 Scan needs `sta_init` (SoftAP-only cannot scan). BLE is a later package
 (`gd32v_ble`).
 
-## Status (`@v0.6.0`)
+## Status (`@v0.7.0`)
 
 | API | Notes |
 |---|---|
+| `wps_supported` / `wps_pbc` / `wps_pin` | WPS (`wifi_management_wps_start`). Needs `CFG_WPS` |
+| `eap_tls_supported` / `sta_connect_eap_tls` | Enterprise EAP-TLS. Needs `CFG_8021x_EAP_TLS` |
 | `roaming_set` / `roaming` / `roaming_rssi_th` | STA roaming (`wifi_management_roaming_set`) |
 | `concurrent_supported` / `concurrent_set` / `concurrent` | APSTA (AN158 §4.4.10). Needs `CFG_WIFI_CONCURRENT` |
 | `sta_init` | `wifi_management_init` (once) |
@@ -55,12 +58,53 @@ Scan needs `sta_init` (SoftAP-only cannot scan). BLE is a later package
 | `scan_rssi` / `scan_channel` / `scan_authmode` / `scan_log` | After `scan_start`. Auth = `wifi_ap_auth_mode_t` |
 | `err_ok` / `ipv4` | Same shape as `esp_wifi` |
 
-`version()` → `6`.
+`version()` → `7`.
 
 Host `klin test` uses stubs when `wifi_management.h` is not on the include path
 (`__has_include`). Do **not** call the factory-style init on a host and expect
 RF.
 
+Without `CFG_WPS` / `CFG_8021x_EAP_TLS`, the matching calls return `-1` /
+`supported` is false. PEM cert/key strings for EAP-TLS are **caller-owned**
+(no Klin heap).
+
+
+## Usage (WPS)
+
+```klin
+import "github/klin-lang/gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    if wifi.wps_supported() {
+        e = wifi.wps_pbc()
+        // e = wifi.wps_pin("12345670")
+    }
+    e = wifi.sta_wait_ip(30000)
+}
+```
+
+## Usage (EAP-TLS)
+
+```klin
+import "github/klin-lang/gd32v_wifi" wifi
+
+fn main() {
+    let mut e = wifi.sta_init()
+    e = wifi.sta_connect_eap_tls(
+        "corp-ssid", "user@example.com",
+        "-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----\n",
+        "-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----\n",
+        "-----BEGIN CERTIFICATE-----\nCLIENT\n-----END CERTIFICATE-----\n",
+        "", ""
+    )
+    e = wifi.sta_wait_ip(30000)
+}
+```
+
+```sh
+klin get github/klin-lang/gd32v_wifi@v0.7.0
+```
 
 ## Usage (roaming)
 

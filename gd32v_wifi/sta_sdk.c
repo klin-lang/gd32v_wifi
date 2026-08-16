@@ -3,6 +3,7 @@
  * Host path: stubs when SDK headers are not on the include path (klin test).
  * `@v0.5.0` APSTA: `concurrent_set` / `concurrent_get` (needs CFG_WIFI_CONCURRENT).
  * `@v0.6.0` roaming: `roaming_set` / `roaming` / `roaming_rssi_th`.
+ * `@v0.7.0` WPS + EAP-TLS: `wps_*` / `sta_connect_eap_tls`.
  */
 #include "sta_sdk.h"
 
@@ -38,6 +39,12 @@
 #endif
 #if defined(CFG_WIFI_CONCURRENT)
 #define KLIN_GD32V_WIFI_HAVE_CONCURRENT 1
+#endif
+#if defined(CFG_WPS)
+#define KLIN_GD32V_WIFI_HAVE_WPS 1
+#endif
+#if defined(CFG_8021x_EAP_TLS)
+#define KLIN_GD32V_WIFI_HAVE_EAP_TLS 1
 #endif
 #endif
 
@@ -540,6 +547,130 @@ int klin_gd32v_wifi_roaming_rssi_th(void)
     return (int)th;
 }
 
+int klin_gd32v_wifi_wps_supported(void)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_WPS
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int klin_gd32v_wifi_wps_pbc(void)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_WPS
+    if (!s_inited) {
+        return -1;
+    }
+    s_last_connect = wifi_management_wps_start(1, NULL, 1);
+    s_connected = (s_last_connect == 0);
+    if (s_connected) {
+        s_assoc_auth = 3;
+        if (s_use_static) {
+            (void)klin_gd32v_wifi_apply_static_ip();
+        }
+    }
+    return s_last_connect;
+#else
+    return -1;
+#endif
+}
+
+int klin_gd32v_wifi_wps_pin(const char *pin)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_WPS
+    char pin_buf[9];
+    size_t n;
+
+    if (!s_inited) {
+        return -1;
+    }
+    if (pin == NULL || pin[0] == '\0') {
+        return -1;
+    }
+    n = strlen(pin);
+    if (n < 4 || n > 8) {
+        return -1;
+    }
+    memcpy(pin_buf, pin, n);
+    pin_buf[n] = '\0';
+    s_last_connect = wifi_management_wps_start(0, pin_buf, 1);
+    s_connected = (s_last_connect == 0);
+    if (s_connected) {
+        s_assoc_auth = 3;
+        if (s_use_static) {
+            (void)klin_gd32v_wifi_apply_static_ip();
+        }
+    }
+    return s_last_connect;
+#else
+    (void)pin;
+    return -1;
+#endif
+}
+
+int klin_gd32v_wifi_eap_tls_supported(void)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_EAP_TLS
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int klin_gd32v_wifi_sta_connect_eap_tls(const char *ssid, const char *identity,
+                                        const char *ca_cert, const char *client_key,
+                                        const char *client_cert,
+                                        const char *client_key_password,
+                                        const char *phase1)
+{
+#ifdef KLIN_GD32V_WIFI_HAVE_EAP_TLS
+    char ssid_buf[33];
+    size_t n;
+    const char *key_pw;
+    const char *ph1;
+
+    if (!s_inited) {
+        return -1;
+    }
+    if (ssid == NULL || ssid[0] == '\0' || identity == NULL || identity[0] == '\0' ||
+        ca_cert == NULL || ca_cert[0] == '\0' || client_key == NULL ||
+        client_key[0] == '\0' || client_cert == NULL || client_cert[0] == '\0') {
+        return -1;
+    }
+    n = strlen(ssid);
+    if (n > 32) {
+        return -1;
+    }
+    memcpy(ssid_buf, ssid, n + 1);
+    key_pw = (client_key_password != NULL && client_key_password[0] != '\0')
+                 ? client_key_password
+                 : NULL;
+    ph1 = (phase1 != NULL && phase1[0] != '\0') ? phase1 : NULL;
+    s_last_connect = wifi_management_connect_with_eap_tls(
+        ssid_buf, identity, ca_cert, client_key, client_cert, key_pw, ph1, 1);
+    s_connected = (s_last_connect == 0);
+    if (s_connected) {
+        memset(s_assoc_ssid, 0, sizeof(s_assoc_ssid));
+        memcpy(s_assoc_ssid, ssid_buf, strlen(ssid_buf));
+        s_assoc_auth = 3;
+        if (s_use_static) {
+            (void)klin_gd32v_wifi_apply_static_ip();
+        }
+    }
+    return s_last_connect;
+#else
+    (void)ssid;
+    (void)identity;
+    (void)ca_cert;
+    (void)client_key;
+    (void)client_cert;
+    (void)client_key_password;
+    (void)phase1;
+    return -1;
+#endif
+}
+
 #else /* host stubs — no SDK headers */
 
 int klin_gd32v_wifi_concurrent_supported(void)
@@ -590,6 +721,105 @@ int klin_gd32v_wifi_roaming_get(void)
 int klin_gd32v_wifi_roaming_rssi_th(void)
 {
     return (int)s_roaming_rssi_th;
+}
+
+int klin_gd32v_wifi_wps_supported(void)
+{
+    return 1;
+}
+
+int klin_gd32v_wifi_wps_pbc(void)
+{
+    if (!s_inited) {
+        return -1;
+    }
+    s_last_connect = 0;
+    s_connected = 1;
+    memset(s_assoc_ssid, 0, sizeof(s_assoc_ssid));
+    memcpy(s_assoc_ssid, "wps-pbc", 7);
+    s_assoc_auth = 3;
+    if (s_use_static) {
+        s_ip = s_static_ip;
+        s_gw = s_static_gw;
+        s_mask = s_static_mask;
+    } else {
+        s_ip = 192u | (168u << 8) | (1u << 16) | (50u << 24);
+        s_gw = 192u | (168u << 8) | (1u << 16) | (1u << 24);
+        s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    }
+    return 0;
+}
+
+int klin_gd32v_wifi_wps_pin(const char *pin)
+{
+    size_t n;
+
+    if (!s_inited) {
+        return -1;
+    }
+    if (pin == NULL || pin[0] == '\0') {
+        return -1;
+    }
+    n = strlen(pin);
+    if (n < 4 || n > 8) {
+        return -1;
+    }
+    s_last_connect = 0;
+    s_connected = 1;
+    memset(s_assoc_ssid, 0, sizeof(s_assoc_ssid));
+    memcpy(s_assoc_ssid, "wps-pin", 7);
+    s_assoc_auth = 3;
+    if (s_use_static) {
+        s_ip = s_static_ip;
+        s_gw = s_static_gw;
+        s_mask = s_static_mask;
+    } else {
+        s_ip = 192u | (168u << 8) | (1u << 16) | (50u << 24);
+        s_gw = 192u | (168u << 8) | (1u << 16) | (1u << 24);
+        s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    }
+    return 0;
+}
+
+int klin_gd32v_wifi_eap_tls_supported(void)
+{
+    return 1;
+}
+
+int klin_gd32v_wifi_sta_connect_eap_tls(const char *ssid, const char *identity,
+                                        const char *ca_cert, const char *client_key,
+                                        const char *client_cert,
+                                        const char *client_key_password,
+                                        const char *phase1)
+{
+    (void)client_key_password;
+    (void)phase1;
+    if (!s_inited || ssid == NULL || ssid[0] == '\0' || identity == NULL ||
+        identity[0] == '\0' || ca_cert == NULL || ca_cert[0] == '\0' ||
+        client_key == NULL || client_key[0] == '\0' || client_cert == NULL ||
+        client_cert[0] == '\0') {
+        s_last_connect = -1;
+        s_connected = 0;
+        return -1;
+    }
+    if (strlen(ssid) > 32) {
+        return -1;
+    }
+    s_last_connect = 0;
+    s_connected = 1;
+    memset(s_assoc_ssid, 0, sizeof(s_assoc_ssid));
+    strncpy(s_assoc_ssid, ssid, sizeof(s_assoc_ssid) - 1);
+    s_assoc_auth = 3;
+    if (s_use_static) {
+        s_ip = s_static_ip;
+        s_gw = s_static_gw;
+        s_mask = s_static_mask;
+    } else {
+        s_ip = 192u | (168u << 8) | (1u << 16) | (50u << 24);
+        s_gw = 192u | (168u << 8) | (1u << 16) | (1u << 24);
+        s_mask = 255u | (255u << 8) | (255u << 16) | (0u << 24);
+    }
+    return 0;
 }
 
 
